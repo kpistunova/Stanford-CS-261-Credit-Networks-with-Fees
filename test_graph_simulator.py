@@ -1,10 +1,11 @@
 import networkx as nx
 import random
 import matplotlib.pyplot as plt
-
+import seaborn as sns
+import pandas as pd
 
 def create_random_graph(num_nodes, avg_degree, fixed_total_capacity):
-    num_edges = int(avg_degree * num_nodes / 2)
+    num_edges = int(avg_degree * num_nodes)
     G = nx.DiGraph()
     G.add_nodes_from(range(num_nodes))  # Ensure all nodes are added
 
@@ -41,6 +42,149 @@ def update_graph_capacity(G, path, debug=False, iteration=0):
             if debug:
                 print(f"Iteration {iteration}: Created reverse edge ({v}, {u}) with capacity 1")
 
+def update_graph_capacity_fees(G, path, transaction_amount, fee):
+    # Calculate the total fees for each edge along the path
+    fees = [(len(path) - i - 2) * fee for i in range(len(path) - 1)]
+
+    # Check if all edges can afford the transaction and the fees
+    for i in range(len(path) - 1):
+        u, v = path[i], path[i+1]
+        required_capacity = transaction_amount + fees[i]
+        # If any edge does not have the required capacity, don't proceed with the transaction
+        if G[u][v]['capacity'] < required_capacity:
+            return False  # Indicates the transaction failed due to insufficient capacity
+
+    # All edges can afford the transaction, update capacities
+    for i in range(len(path) - 1):
+        u, v = path[i], path[i+1]
+        # Subtract the transaction amount and fees from the forward edge
+        G[u][v]['capacity'] -= (transaction_amount + fees[i])
+
+        # Update or create the reverse edge with the transaction amount and fees
+        if G.has_edge(v, u):
+            G[v][u]['capacity'] += (transaction_amount + fees[i])
+        else:
+            G.add_edge(v, u, capacity=(transaction_amount + fees[i]))
+
+    return True  # Indicates the transaction was successful
+
+
+
+
+def simulate_transactions_fees(G, num_nodes, epsilon, fee, transaction_amount, pos=None, visualize_every_n=1000):
+    total_transactions = 0
+    successful_transactions = 0
+    window_size = 1000
+    prev_success_rate = -1
+
+    while True:
+        for _ in range(window_size):
+            s, t = random.sample(range(num_nodes), 2)
+            path = None
+            try:
+                path = nx.shortest_path(G, s, t, weight='capacity')
+            except nx.NetworkXNoPath:
+                pass  # No path exists, count as a failed transaction
+
+            if path:
+                # Attempt to update capacities and perform the transaction
+                transaction_succeeded = update_graph_capacity_fees(G, path, transaction_amount, fee)
+                if transaction_succeeded:
+                    successful_transactions += 1
+            total_transactions += 1
+
+                # Visualization logic here, if needed
+
+            # if total_transactions % visualize_every_n == 0 and path:
+            #     visualize_graph(G, total_transactions, pos)
+
+        # Calculate the current success rate
+        current_success_rate = successful_transactions / total_transactions
+        if prev_success_rate != -1 and abs(current_success_rate - prev_success_rate) < epsilon:
+            break  # Stop if the success rate has converged
+        prev_success_rate = current_success_rate
+
+    return current_success_rate
+
+
+def visualize_graph(G, transaction_number, pos=None):
+    if pos is None:
+        pos = nx.spring_layout(G)
+
+    fig, ax = plt.subplots(figsize=(12, 10))
+    nx.draw(G, pos, with_labels=True, node_color='lightblue', edge_color='gray', node_size=700, font_size=10)
+
+    # Draw edge labels for capacities
+    edge_labels = nx.get_edge_attributes(G, 'capacity')
+    nx.draw_networkx_edge_labels(G, pos, ax=ax, edge_labels=edge_labels)
+
+    # # Draw curved edges to distinguish between forward and reverse edges
+    # for u, v, data in G.edges(data=True):
+    #     rad = 0.1  # Radius for curve, adjust as necessary
+    #     if G.has_edge(v, u):  # Check for reverse edge
+    #         rad = -0.1  # Curve in the opposite direction for reverse edge
+    #     nx.draw_networkx_edges(G, pos, edgelist=[(u, v)], connectionstyle=f'arc3,rad={rad}', ax=ax)
+    ax.set_title(f'Graph after {transaction_number} transactions', fontsize=14)
+    plt.title(f'Graph after {transaction_number} transactions', fontsize=14)
+    plt.tight_layout()
+    plt.show()
+
+#-----------------------------------------feeeeeeeeeees
+
+num_nodes = 200
+# avg_degree = 20
+fixed_capacity = 1 # Set the fixed capacity for each edge
+transaction_amount = 1
+fee_range = [0, 0.05, 0.1]
+epsilon = 0.002
+num_runs = 20
+
+# Main simulation
+# Prepare to store the results
+success_rates = []
+degree_range = [3, 5, 10, 15, 20, 30]
+
+results = {
+    'avg_degree': [],
+    'run': [],
+    'success_rate': [],
+    'fee': [],
+}
+
+for fee in fee_range:
+    for avg_degree in degree_range:
+        for run in range(num_runs):
+            G = create_random_graph(num_nodes, avg_degree, fixed_capacity)
+            pos = nx.spring_layout(G)
+            success_rate = simulate_transactions_fees(G, num_nodes, epsilon, transaction_amount, fee, pos)
+            if run % 5 == 0:
+                print(f'Completed run {run}/{num_runs} for nodes {num_nodes}, avg_degree {avg_degree}, fee {fee}')
+            results['avg_degree'].append(avg_degree)
+            results['run'].append(run)
+            results['success_rate'].append(success_rate)
+            results['fee'].append(fee)  # Keep track of the fee for this simulation
+
+
+
+df_fees_0 = pd.DataFrame(results)
+# stats_df_fees = df_fees.groupby('avg_degree')['success_rate'].agg(['mean', 'std']).reset_index()
+sns.set_theme()
+# sns.lineplot(data=stats_df_fees, x='avg_degree', y='mean', marker = 'o')
+# plt.fill_between(stats_df_fees['avg_degree'], stats_df_fees['mean'] - stats_df_fees['std'], stats_df_fees['mean'] + stats_df_fees['std'], alpha=0.3)
+
+sns.lineplot(data=df_fees, x='avg_degree', y='success_rate', hue='fee', marker='o', ci='sd')
+
+
+plt.xlabel('Average Degree')
+plt.ylabel('Success Rate')
+plt.title('Success Rate vs Average Degree with fees')
+plt.show()
+
+
+
+print('------------------')
+print('Finished!')
+
 
 
 def simulate_transactions(G, num_nodes, epsilon, pos, visualize_initial=4, visualize_every_n=1000):
@@ -71,61 +215,3 @@ def simulate_transactions(G, num_nodes, epsilon, pos, visualize_initial=4, visua
         prev_success_rate = current_success_rate
 
     return current_success_rate
-
-
-
-
-def visualize_graph(G, transaction_number, pos=None):
-    if pos is None:
-        pos = nx.spring_layout(G)
-
-    fig, ax = plt.subplots(figsize=(12, 10))
-    nx.draw(G, pos, with_labels=True, node_color='lightblue', edge_color='gray', node_size=700, font_size=10)
-
-    # Draw edge labels for capacities
-    edge_labels = nx.get_edge_attributes(G, 'capacity')
-    nx.draw_networkx_edge_labels(G, pos, ax=ax, edge_labels=edge_labels)
-
-    # # Draw curved edges to distinguish between forward and reverse edges
-    # for u, v, data in G.edges(data=True):
-    #     rad = 0.1  # Radius for curve, adjust as necessary
-    #     if G.has_edge(v, u):  # Check for reverse edge
-    #         rad = -0.1  # Curve in the opposite direction for reverse edge
-    #     nx.draw_networkx_edges(G, pos, edgelist=[(u, v)], connectionstyle=f'arc3,rad={rad}', ax=ax)
-    ax.set_title(f'Graph after {transaction_number} transactions', fontsize=14)
-    plt.title(f'Graph after {transaction_number} transactions', fontsize=14)
-    plt.tight_layout()
-    plt.show()
-
-# Parameters
-num_nodes = 200
-# avg_degree = 20
-fixed_capacity = 1  # Set the fixed capacity for each edge
-epsilon = 0.002
-num_runs = 50
-
-# Main simulation
-# Prepare to store the results
-success_rates = []
-degree_range = [5, 10, 40, 60, 80]
-for avg_degree in degree_range:
-    average_success_rate = 0
-    for run in range(num_runs):
-        G = create_random_graph(num_nodes, avg_degree, fixed_capacity)
-        pos = nx.spring_layout(G)
-        success_rate = simulate_transactions(G, num_nodes, epsilon, pos)
-        average_success_rate += success_rate
-        if run % 10 == 0:
-            print(f'Completed run {run}/{num_runs} for average degree {avg_degree}')
-
-    average_success_rate /= num_runs
-    success_rates.append(average_success_rate)
-    print(f'Average success rate for degree {avg_degree}: {average_success_rate}')
-
-
-plt.plot(degree_range, success_rates, marker='o')
-plt.xlabel('Average Node Degree')
-plt.ylabel('Success Rate')
-plt.title('Success Rate vs Average Node Degree')
-plt.grid(True)
-plt.show()
