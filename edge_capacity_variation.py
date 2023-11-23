@@ -77,7 +77,7 @@ def identify_outliers(df, column,  multiplier=0.8 ):
 
 # Configuration
 num_nodes = 100
-capacity_range = [7]
+fee_range = np.linspace(1.0, 20, num=1001)
 transaction_amount = 1
 # fee_range = [2.2, 2.5, 2.7, 3, 4, 5, 6, 7, 8]
 fee_range = np.linspace(0.0, 1.0, num=1001)
