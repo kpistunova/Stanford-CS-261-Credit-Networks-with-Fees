@@ -52,66 +52,41 @@ def simulate_transactions_fees(G, num_nodes, epsilon, fee, transaction_amount, p
         for _ in range(window_size):
             s, t = random.sample(range(num_nodes), 2)
             try:
-                path = nx.shortest_path(G, s, t, weight='capacity')
+                path = nx.shortest_path(G, s, t)
                 # Direct capacity check
                 if min([G[u][v]['capacity'] for u, v in zip(path, path[1:])]) > 0:
                     transaction_succeeded = update_graph_capacity_fees(G, path, transaction_amount, fee)
                     if transaction_succeeded:
                         successful_transactions += 1
-                        # for i in range(len(path) - 1):
-                        #     u, v = path[i], path[i + 1]
-                        #     edge_usage_frequency[(u, v)] += 1
-                        #     edge_capacity_over_time[(u, v)][total_transactions // snapshot_interval].append(
-                        #         G[u][v]['capacity'])
-
 
             except nx.NetworkXNoPath:
                 pass
 
-            # for u, v in G.edges():
-            #     if u < v:  # Forward edge
-            #         forward_edge_capacity_over_time[(u, v)].append(G[u][v]['capacity'])
-            #     else:  # Backward edge
-            #         backward_edge_capacity_over_time[(u, v)].append(G[u][v]['capacity'])
-
-            # total_transactions += 1
-            # total_capacity_over_time.append(calculate_total_capacity(G))
-
-            # Visualization logic here, if needed
-            if total_transactions <= visualize_initial or total_transactions % snapshot_interval == 0:
-                visualize_graph(G, total_transactions, pos)
+            total_transactions += 1
 
         current_success_rate = successful_transactions / total_transactions
         if prev_success_rate != -1 and abs(current_success_rate - prev_success_rate) < epsilon:
             break
         prev_success_rate = current_success_rate
 
-    return current_success_rate, edge_usage_frequency, edge_capacity_over_time
-
-def graph_to_matrix(G, num_nodes):
-    matrix = np.zeros((num_nodes, num_nodes))
-    for u, v, data in G.edges(data=True):
-        matrix[u, v] = data['capacity']
-    return matrix
+    return current_success_rate
 #-----------------------------------------feeeeeeeeeees
 
 num_nodes = 100
 # avg_degree = 20
-# capacity_range = [5, 10]
-capacity_range = [2]
+capacity_range = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 20]
 
 fixed_capacity = 2 # Set the fixed capacity for each edge
 transaction_amount = 1
-# fee_range = [0, 0.01, 0.1]
-fee_range = [0.01]
+fee_range = [0, 0.000001, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+# fee_range = [0.01]
 
 epsilon = 0.002
-num_runs = 3
+num_runs = 5
 
 
 
 success_rates = []
-degree_range = [2, 5, 10, 20]
 avg_degree = 10
 results = {
     'capacity': [],
@@ -122,33 +97,13 @@ results = {
 
 all_capacity_over_time = []
 
-
-G = create_random_graph(100, avg_degree, 2)
-pos = nx.spring_layout(G)
-success_rate, forward_edge_capacity_over_time, backward_edge_capacity_over_time = simulate_transactions_fees(G, 100, 0.002, 0.01, 1, pos)
-
-
-most_used_edges = sorted(edge_usage_frequency, key=edge_usage_frequency.get, reverse=True)[:10]
-
-# Plot the capacity utilization over time for these edges
-for edge in most_used_edges:
-    capacities = list(edge_capacity_over_time[edge].values())
-    plt.plot(capacities, label=f"Edge {edge}")
-
-plt.xlabel('Time Step / Interval')
-plt.ylabel('Remaining Capacity')
-plt.title('Capacity Utilization Over Time on High-Traffic Edges')
-plt.legend()
-plt.show()
-
-print("jjjjjjjj")
-
-for fee in fee_range:
-    for capacity in capacity_range:
+checkpoint_interval = 100
+for fee_index, fee in enumerate(fee_range):
+    for capacity_index, capacity in enumerate(capacity_range):
         for run in range(num_runs):
             G = create_random_graph(num_nodes, avg_degree, capacity)
             pos = nx.spring_layout(G)
-            success_rate, forward_edge_capacity_over_time, backward_edge_capacity_over_time = simulate_transactions_fees(G, num_nodes, epsilon, fee, transaction_amount, pos)
+            success_rate = simulate_transactions_fees(G, num_nodes, epsilon, fee, transaction_amount, pos)
             print(f'Completed run {run}/{num_runs}, capacity {capacity}, fee {fee}')
             # Append each capacity measurement to the list with corresponding fee and capacity
 
@@ -157,14 +112,22 @@ for fee in fee_range:
             results['success_rate'].append(success_rate)
             results['fee'].append(fee)
 
+            # Checkpointing: save the DataFrame every n iterations
+            # if run % checkpoint_interval == 0 or (run == num_runs - 1 and capacity_index == len(capacity_range) - 1 and fee_index == len(fee_range) - 1):
+            #     checkpoint_df = pd.DataFrame(results)
+            #     checkpoint_filename = f'checkpoint_capacity_{capacity}_fee_{fee}_run_{run}.pkl'
+            #     checkpoint_df.to_pickle(checkpoint_filename)
+            #     print(f'Saved checkpoint to {checkpoint_filename}')
 
 
-df_capacity_large2 = pd.DataFrame(results)
-df_capacity_large2.to_pickle('capacity_large_2_time_window_500_graphs_5.pkl')
+
+df_capacity_1_to_20_fee_0_to_0p5_denser = pd.DataFrame(results)
+df_capacity_1_to_20_fee_0_to_0p5_denser.to_pickle('df_capacity_1_to_20_fee_0_to_0p5_denser.pkl')
 
 # After all simulations, create a DataFrame for plotting
 
-
+df = pd.DataFrame(results)
+# df['fee'] = df['fee'].map('{:.4f}'.format)
 
 sns.set_theme()
 
@@ -173,18 +136,19 @@ sns.set_theme()
 # sns.lineplot(data=stats_df_fees, x='avg_degree', y='mean', marker = 'o')
 # plt.fill_between(stats_df_fees['avg_degree'], stats_df_fees['mean'] - stats_df_fees['std'], stats_df_fees['mean'] + stats_df_fees['std'], alpha=0.3)
 fig = plt.figure(figsize=(8 / 1.2, 6 / 1.2), dpi=300)
-sns.lineplot(data=df_capacity_large, x='capacity', y='success_rate', hue='fee', marker='o', ci='sd', linewidth=2.5,
-             markersize=8)
+sns.lineplot(data=df, x='capacity', y='success_rate', hue='fee', marker='o', ci='sd', linewidth=2.5, markersize=8,  legend="full")
 
 plt.xlabel('Edge capacity', fontsize=14)
 plt.ylabel('Success Rate', fontsize=14)
 plt.xticks(fontsize=12)
 plt.yticks(fontsize=12)
 # plt.title('Total capacity = 1, transaction = 1, nodes = 200', fontsize=14)
-plt.legend(title='Capacity', title_fontsize='13', fontsize='12', loc='upper left', bbox_to_anchor=(1, 1))
+plt.legend(title='Fee', title_fontsize='13', fontsize='12', loc='upper left', bbox_to_anchor=(1, 1))
+plt.ylim([0, 1.1])
+plt.xlim([0, 21])
 
 plt.tight_layout()
-fig.savefig('capacity_large2_scan_window_500_graphs_5.png', dpi=300, bbox_inches='tight')
+fig.savefig('df_capacity_1_to_20_fee_0_to_0p5_denser.png', dpi=300, bbox_inches='tight')
 plt.show()
 
 
