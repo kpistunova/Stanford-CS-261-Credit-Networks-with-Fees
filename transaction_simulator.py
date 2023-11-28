@@ -3,7 +3,9 @@ import random
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
-
+import nx_cugraph as nxcg
+import cugraph
+import cudf
 def create_random_graph(num_nodes, avg_degree, fixed_total_capacity):
     """
     Creates a random directed graph with a specified average degree and fixed total capacity for each edge.
@@ -120,7 +122,12 @@ def simulate_transactions_fees(G, num_nodes, epsilon, fee, transaction_amount, w
         for _ in range(window_size):
             s, t = random.sample(range(num_nodes), 2)
             try:
+                # nxcg_G = nxcg.from_networkx(G)
                 path = nx.shortest_path(G, s, t)
+                # path = cugraph.shortest_path(nxcg_G, s, t)
+                # sssp = cugraph.bfs(G, s)
+                # path = cugraph.utilities.utils.get_traversed_path_list(sssp, t)
+                # path.reverse()
                 # Direct capacity check
                 if min([G[u][v]['capacity'] for u, v in zip(path, path[1:])]) > 0:
                     transaction_succeeded = update_graph_capacity_fees(G, path, transaction_amount, fee)
@@ -138,3 +145,5 @@ def simulate_transactions_fees(G, num_nodes, epsilon, fee, transaction_amount, w
         prev_success_rate = current_success_rate
 
     return current_success_rate
+
+
