@@ -5,11 +5,28 @@ import seaborn as sns
 import pandas as pd
 
 def create_random_graph(num_nodes, avg_degree, fixed_total_capacity):
+    """
+    Creates a random directed graph with a specified average degree and fixed total capacity for each edge.
+
+    Parameters:
+    num_nodes (int): The number of nodes in the graph.
+    avg_degree (float): The average out-degree that each node in the graph should have.
+    fixed_total_capacity (int or float): The capacity assigned to each edge in the graph.
+
+    Returns:
+    networkx.DiGraph: A NetworkX directed graph with the specified number of nodes and edges, where each edge
+                      has the given fixed total capacity.
+
+    Note:
+    - The function attempts to create a graph where each node has approximately the average degree specified.
+      However, the actual degree may vary due to the random nature of graph generation.
+    - Edges are added randomly, and the graph may not be strongly connected.
+    """
     num_edges = int(avg_degree * num_nodes)
     G = nx.DiGraph()
     G.add_nodes_from(range(num_nodes))  # Ensure all nodes are added
 
-    while G.number_of_edges() < num_edges :  # Multiplying by 2 since each edge is one-way in DiGraph
+    while G.number_of_edges() < num_edges :
         u, v = random.sample(G.nodes, 2)  # Select from actual nodes
 
         # Add the edge only if the reverse edge does not exist
@@ -19,6 +36,27 @@ def create_random_graph(num_nodes, avg_degree, fixed_total_capacity):
     return G
 
 def update_graph_capacity_fees(G, path, transaction_amount, fee):
+    """
+    Updates the capacities and fees of edges along a given path in a graph for a specified transaction.
+
+    Parameters:
+    G (networkx.DiGraph): The graph on which the transaction is occurring.
+    path (list): A list of node indices representing the path through which the transaction is routed.
+    transaction_amount (int or float): The amount of the transaction.
+    fee (int or float): The fee charged per edge traversed in the transaction.
+
+    Returns:
+    bool: True if the transaction is successful (i.e., all edges in the path have sufficient capacity),
+          False otherwise.
+
+    Note:
+    - The function deducts the transaction amount and the cumulative fees from the capacity of each edge in the path.
+    - If any edge along the path does not have enough capacity to handle the transaction amount and the fees,
+      the transaction fails, and no changes are made to the graph.
+    - If an edge capacity drops to zero after the transaction, the edge is removed from the graph.
+    - For each edge in the path, if the reverse edge exists, its capacity is increased by the transaction amount
+      and fees; otherwise, a new reverse edge is created with that capacity.
+    """
     fees = [(len(path) - i - 2) * fee for i in range(len(path) - 1)]
 
     for i in range(len(path) - 1):
@@ -40,6 +78,40 @@ def update_graph_capacity_fees(G, path, transaction_amount, fee):
 
 
 def simulate_transactions_fees(G, num_nodes, epsilon, fee, transaction_amount, window_size, pos=None, snapshot_interval=100):
+    """
+    Simulates a series of transactions in a credit network, represented as a directed graph, and computes the
+    success rate of these transactions. The success rate is the ratio of successful transactions to the total number
+    of attempted transactions, calculated once the system reaches a steady state.
+
+    Parameters:
+    G (networkx.DiGraph): The graph representing the credit network, where nodes are entities and edges represent
+                          credit lines with a fixed total capacity.
+    num_nodes (int): The total number of nodes (entities) in the graph.
+    epsilon (float): The convergence threshold used to determine if the system has reached a steady state.
+                     A steady state is reached when the success rate changes by less than epsilon between two
+                     consecutive windows of transactions.
+    fee (int or float): The fee charged per edge traversed in each transaction.
+    transaction_amount (int or float): The fixed amount involved in each transaction (typically one unit).
+    window_size (int): The number of transactions processed in each iteration.
+    pos (dict, optional): Node positions for visualization purposes (not used in the simulation logic). Defaults to None.
+    snapshot_interval (int): The interval at which to take snapshots of the simulation (not utilized in the current implementation).
+
+    Returns:
+    current_success_rate (float): The success rate of transactions at steady state, defined as the ratio of successful transactions to
+           the total number of attempted transactions.
+
+    Process:
+    - Transactions are simulated by selecting a source (s) and a sink (t) node at random.
+    - For each transaction, the shortest path from s to t is computed. If no path exists, the transaction is marked as failed.
+    - For transactions with an available path, the function checks if each edge along the path can support the transaction
+      amount plus the necessary fees. The fee for an edge depends on its position in the path and the total number of edges (L).
+    - The transaction is successful if all edges in the path have sufficient capacity; otherwise, it is marked as failed.
+    - After a successful transaction, the capacities of the edges along the path are updated to reflect the transaction and fees.
+    - The simulation runs iteratively, processing transactions in windows of 'window_size' until the success rate stabilizes within
+      the epsilon threshold, indicating a steady state.
+    - At steady state, the function returns the overall success probability, calculated as the ratio of successful transactions to
+      the total number of iterations.
+    """
     total_transactions = 0
     successful_transactions = 0
     prev_success_rate = -1
@@ -66,82 +138,3 @@ def simulate_transactions_fees(G, num_nodes, epsilon, fee, transaction_amount, w
         prev_success_rate = current_success_rate
 
     return current_success_rate
-
-#
-#
-#
-# def simulate_transactions(G, num_nodes, epsilon, pos, visualize_initial=4, visualize_every_n=1000):
-#     total_transactions = 0
-#     successful_transactions = 0
-#     window_size = 1000
-#     prev_success_rate = -1
-#
-#     while True:
-#         for _ in range(window_size):
-#             s, t = random.sample(range(num_nodes), 2)
-#             try:
-#                 path = nx.shortest_path(G, s, t, weight='capacity')
-#                 if min([G[u][v]['capacity'] for u, v in zip(path, path[1:])]) > 0:
-#                     # debug = total_transactions <= visualize_initial or total_transactions % visualize_every_n == 0
-#                     update_graph_capacity(G, path)
-#                     successful_transactions += 1
-#             except nx.NetworkXNoPath:
-#                 pass
-#             total_transactions += 1
-#             # Adjust the visualization logic
-#             # if total_transactions <= visualize_initial or total_transactions % visualize_every_n == 0:
-#             #     visualize_graph(G, total_transactions, pos)
-#
-#         current_success_rate = successful_transactions / total_transactions
-#         if prev_success_rate != -1 and abs(current_success_rate - prev_success_rate) < epsilon:
-#             break
-#         prev_success_rate = current_success_rate
-#
-#     return current_success_rate
-#
-# def visualize_graph(G, transaction_number, pos=None):
-#     if pos is None:
-#         pos = nx.spring_layout(G)
-#
-#     fig, ax = plt.subplots(figsize=(12, 10))
-#     nx.draw(G, pos, with_labels=True, node_color='lightblue', edge_color='gray', node_size=700, font_size=10)
-#
-#     # Draw edge labels for capacities
-#     edge_labels = nx.get_edge_attributes(G, 'capacity')
-#     nx.draw_networkx_edge_labels(G, pos, ax=ax, edge_labels=edge_labels)
-#
-#     # # Draw curved edges to distinguish between forward and reverse edges
-#     # for u, v, data in G.edges(data=True):
-#     #     rad = 0.1  # Radius for curve, adjust as necessary
-#     #     if G.has_edge(v, u):  # Check for reverse edge
-#     #         rad = -0.1  # Curve in the opposite direction for reverse edge
-#     #     nx.draw_networkx_edges(G, pos, edgelist=[(u, v)], connectionstyle=f'arc3,rad={rad}', ax=ax)
-#     ax.set_title(f'Graph after {transaction_number} transactions', fontsize=14)
-#     plt.title(f'Graph after {transaction_number} transactions', fontsize=14)
-#     plt.tight_layout()
-#     plt.show()
-#
-# def update_graph_capacity(G, path, debug=False, iteration=0):
-#     if debug:
-#         print(f"Iteration {iteration}: Updating capacities for path: {path}")
-#     for i in range(len(path) - 1):
-#         u, v = path[i], path[i + 1]
-#         # Decrease the capacity of the forward edge
-#         G[u][v]['capacity'] -= 1
-#         if debug:
-#             print(f"Iteration {iteration}: Decreased capacity of edge ({u}, {v}) to {G[u][v]['capacity']}")
-#         if G[u][v]['capacity'] == 0:
-#             G.remove_edge(u, v)
-#             if debug:
-#                 print(f"Iteration {iteration}: Removed edge ({u}, {v}) due to zero capacity")
-#
-#         # Update or create the reverse edge
-#         if G.has_edge(v, u):
-#             G[v][u]['capacity'] += 1
-#             if debug:
-#                 print(
-#                     f"Iteration {iteration}: Increased capacity of reverse edge ({v}, {u}) to {G[v][u]['capacity']}")
-#         else:
-#             G.add_edge(v, u, capacity=1)
-#             if debug:
-#                 print(f"Iteration {iteration}: Created reverse edge ({v}, {u}) with capacity 1")
