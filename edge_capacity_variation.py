@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
+import nx_cugraph as nxcg
 from transaction_simulator import simulate_transactions_fees, create_random_graph
 import time
 
@@ -87,7 +88,7 @@ def plot_results_capacity_fee_variation(df):
     cmap = sns.cubehelix_palette(as_cmap=True)
     sns.set_theme()
     fig = plt.figure(figsize=(8 / 1.2, 6 / 1.2), dpi=300)
-    sns.lineplot(data=df, x='capacity', y='success_rate', hue='fee', marker='o', ci='sd')
+    sns.lineplot(data=df, x='capacity', y='success_rate', hue='fee', marker='o', ci='sd', legend=False)
 
     plt.xlabel('Edge capacity', fontsize=14)
     plt.ylabel('Success Rate', fontsize=14)
@@ -99,18 +100,18 @@ def plot_results_capacity_fee_variation(df):
     plt.xlim(left = 0)
 
     plt.tight_layout()
-    fig.savefig('capacity_vs_fees_more_than_2_line_plot.png', dpi=300, bbox_inches='tight')
+    fig.savefig('capacity_vs_fees_vm.png', dpi=300, bbox_inches='tight')
     plt.show()
 
     # Heatmap
     pivot_table = df.pivot_table(values='success_rate', index='fee', columns='capacity', aggfunc='mean')
     plt.figure(figsize=(10, 8))
-    sns.heatmap(pivot_table, annot=True, fmt=".2f", cmap=cmap, vmin=0, cbar_kws={'label': 'Success Rate'}, square=True)
+    sns.heatmap(pivot_table, annot=True, fmt=".2f", cmap=cmap, vmin=0, cbar_kws={'label': 'Success Rate'}, square=True, legend=False)
 
     plt.title('Success Rate by Fee and Capacity')
     plt.xlabel('Edge Capacity')
     plt.ylabel('Fee')
-    plt.savefig('heatmap_capacity_vs_fees_more_than_2.png', dpi=300, bbox_inches='tight')
+    plt.savefig('heatmap_capacity_vs_fees_vm', dpi=300, bbox_inches='tight')
     plt.show()
 
 def identify_outliers(df, column,  multiplier=0.8 ):
@@ -138,24 +139,23 @@ def identify_outliers(df, column,  multiplier=0.8 ):
 
 # Configuration
 num_nodes = 100
-capacity_range = np.arange(1.0, 20.0, 1)
-
+capacity_range = np.arange(1.0, 16, 1)
+capacity_range = np.append(capacity_range, 20)
 transaction_amount = 1
 # fee_range = [2.2, 2.5, 2.7, 3, 4, 5, 6, 7, 8]
-fee_range = np.round(np.arange(0.1, 1, 0.01), 2)
+fee_range = np.round(np.arange(0.0, 1.01, 0.01), 2)
 epsilon = 0.002
 num_runs = 20
 avg_degree = 10
 window_size = 1000
 
-# df = pd.read_picle('capacity_gpu.pkl')
-
+df = pd.read_pickle('capacity_gpu.pkl')
 
 # Simulation
 df = simulate_network_capacity_fee_variation(num_nodes, capacity_range, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing=True)
-df.to_pickle('capacity_gpu.pkl')
-
-# Plotting
+df.to_pickle('capacity_gpu_test.pkl')
+#
+# # Plotting
 plot_results_capacity_fee_variation(df)
 
 #----code-fee-variation-plotting-with-fixed-capacity-----------
