@@ -6,7 +6,7 @@ import pandas as pd
 import nx_cugraph as nxcg
 import cugraph
 import cudf
-def create_random_graph(num_nodes, avg_degree, fixed_total_capacity):
+def create_random_graph(num_nodes, avg_degree, fixed_total_capacity, type = 'random'):
     """
     Creates a random directed graph with a specified average degree and fixed total capacity for each edge.
 
@@ -24,16 +24,29 @@ def create_random_graph(num_nodes, avg_degree, fixed_total_capacity):
       However, the actual degree may vary due to the random nature of graph generation.
     - Edges are added randomly, and the graph may not be strongly connected.
     """
-    num_edges = int(avg_degree * num_nodes)
     G = nx.DiGraph()
-    G.add_nodes_from(range(num_nodes))  # Ensure all nodes are added
+    G.add_nodes_from(range(num_nodes))
+    if type == 'random' :
+        num_edges = int(avg_degree * num_nodes)
+        while G.number_of_edges() < num_edges :
+            u, v = random.sample(G.nodes, 2)  # Select from actual nodes
+            # Add the edge only if the reverse edge does not exist
+            if not G.has_edge(v, u):
+                G.add_edge(u, v, capacity=fixed_total_capacity)
+    elif type == 'line':
+        # Add edges to the graph to form a line
+        for i in range(num_nodes - 1):
+            # Add an edge between node i and node i+1 with the given capacity
+            G.add_edge(i, i + 1, capacity=fixed_total_capacity)
+            # If you want it to be bidirectional, uncomment the following line
+            # G.add_edge(i + 1, i, capacity=fixed_total_capacity)
+    elif type == 'cycle':
+        # Add edges to the graph to form a cycle
+        for i in range(num_nodes):
+            G.add_edge(i, (i + 1) % num_nodes, capacity=fixed_total_capacity)  # Connect to the next node, wrapping around to form a cycle
 
-    while G.number_of_edges() < num_edges :
-        u, v = random.sample(G.nodes, 2)  # Select from actual nodes
-
-        # Add the edge only if the reverse edge does not exist
-        if not G.has_edge(v, u):
-            G.add_edge(u, v, capacity=fixed_total_capacity)
+    else:
+        raise ValueError("Invalid graph type. Please choose 'random', 'line', or 'cycle'.")
 
     return G
 

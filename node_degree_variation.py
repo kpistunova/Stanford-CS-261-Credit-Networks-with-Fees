@@ -164,9 +164,7 @@ df.to_pickle('node_degree_capacity_all_variation_with_length.pkl')
 plot_results_node_degree_fee_variation(df)
 
 #------path_lenght_vs_node_degre_analysis_for_fee_0.3
-import seaborn as sns
-import matplotlib.pyplot as plt
-import matplotlib.colors
+
 
 # Filter the DataFrame to include only the desired fees
 selected_fees = [0.3]
@@ -180,30 +178,30 @@ fig, ax = plt.subplots(figsize=(8 / 1.2, 6 / 1.2), dpi=300)
 line_styles = {0: (2, 2), 0.3: (1, 0)}  # (solid line for 0.3, dashed line for 0)
 
 # Use the filtered DataFrame for plotting, with line styles based on fees
-# sns.lineplot(data=df_filtered, x='avg_degree', y='avg_path_length', hue='capacity', style='fee',
-#              palette='coolwarm', hue_norm=matplotlib.colors.LogNorm(),
-#              dashes=[line_styles[fee] for fee in df_filtered['fee'].unique()],
-#              markers=True, alpha=0.9, ci=95, ax=ax, legend='full')
-# # Plot the average path length for fee 0 as a dashed line
-# sns.lineplot(data=mean_path_length_fee_0, x='avg_degree', y='avg_path_length',
-#              label='Fee 0 Average', markers=True, linestyle='--', color='red', ax=ax)
-#
-# plt.xlabel('Average Node Degree', fontsize=16)
-# plt.ylabel('Average Path Length', fontsize=16)
-# plt.xticks(fontsize=14)
-# plt.yticks(fontsize=14)
-#
-# # Adjust line width for better visibility
-# for line in ax.lines:
-#     line.set_linewidth(2)
-#
-# # Adjust the legend
-# handles, labels = ax.get_legend_handles_labels()
-# legend = ax.legend(title='Legend', loc='best', ncol=2, fontsize='x-small', title_fontsize='small')
-#
-# plt.tight_layout()
-# fig.savefig('average_path_length_for_selected_fees.png', dpi=300)
-# plt.show()
+sns.lineplot(data=df_filtered, x='avg_degree', y='avg_path_length', hue='capacity', style='fee',
+             palette='coolwarm', hue_norm=matplotlib.colors.LogNorm(),
+             dashes=[line_styles[fee] for fee in df_filtered['fee'].unique()],
+             markers=True, alpha=0.9, ci=95, ax=ax, legend='full')
+# Plot the average path length for fee 0 as a dashed line
+sns.lineplot(data=mean_path_length_fee_0, x='avg_degree', y='avg_path_length',
+             label='Fee 0 Average', markers=True, linestyle='--', color='red', ax=ax)
+
+plt.xlabel('Average Node Degree', fontsize=16)
+plt.ylabel('Average Path Length', fontsize=16)
+plt.xticks(fontsize=14)
+plt.yticks(fontsize=14)
+
+# Adjust line width for better visibility
+for line in ax.lines:
+    line.set_linewidth(2)
+
+# Adjust the legend
+handles, labels = ax.get_legend_handles_labels()
+legend = ax.legend(title='Legend', loc='best', ncol=2, fontsize='x-small', title_fontsize='small')
+
+plt.tight_layout()
+fig.savefig('average_path_length_for_selected_fees.png', dpi=300)
+plt.show()
 
 
 #-------------------------- Effect of varying graph density-----------------------
