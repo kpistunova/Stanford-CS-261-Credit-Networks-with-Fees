@@ -46,11 +46,15 @@ def simulate_network_network_size_variation(num_nodes, capacity_range, transacti
         for capacity in capacity_range:
             for node in num_nodes:
                 for run in range(num_runs):
+                    # if run == 1:
+                    #     visualize = True
+                    # else:
+                    #     visualize = False
                     G = create_random_graph(node, avg_degree, capacity, 'line')
                     pos = nx.spring_layout(G)
-                    success_rate, avg_path_length = simulate_transactions_fees(G, 1, node, epsilon, fee,
-                                                                               transaction_amount, window_size, pos,
-                                                                               visualize=True)
+                    success_rate, avg_path_length = simulate_transactions_fees(G, capacity, node, epsilon, fee,
+                                                                               transaction_amount, window_size, pos, visualize=False
+                                                                               )
                     # print(f'Completed run {run}/{num_runs}, degree {degree}, fee {fee}')
 
                     results['nodes'].append(node)
@@ -158,6 +162,7 @@ def plot_results_network_size_variation(df, capacity):
 
 # Configuration
 num_nodes = [2, 3, 4, 5, 6, 7, 8, 9, 10]
+# num_nodes = [2, ]
 capacity_range = [2, 3, 4, 5, 8, 10, 15, 20, 30]
 transaction_amount = 1
 fee_range = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]

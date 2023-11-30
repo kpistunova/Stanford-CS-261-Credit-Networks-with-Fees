@@ -95,7 +95,7 @@ def update_graph_capacity_fees(G, path, transaction_amount, fee):
 
 
 def simulate_transactions_fees(G, capacity, num_nodes, epsilon, fee, transaction_amount, window_size, pos=None,
-                               visualize=False, visualize_initial=1, visualize_every_n=1000):
+                               visualize=False, visualize_initial=5, visualize_every_n=1000):
     """
     Simulates a series of transactions in a credit network, represented as a directed graph, and computes the
     success rate of these transactions. The success rate is the ratio of successful transactions to the total number
@@ -135,10 +135,10 @@ def simulate_transactions_fees(G, capacity, num_nodes, epsilon, fee, transaction
     successful_transactions = 0
     prev_success_rate = -1
     total_length_of_paths = 0
+    if visualize:
+        visualize_graph(G, total_transactions, fee, capacity, pos)
     while True:
         for _ in range(window_size):
-            if total_transactions <= visualize_initial:
-                visualize_graph(G, total_transactions, fee, capacity, pos)
             s, t = random.sample(range(num_nodes), 2)
             try:
                 path = nx.shortest_path(G, s, t)
@@ -147,7 +147,10 @@ def simulate_transactions_fees(G, capacity, num_nodes, epsilon, fee, transaction
                     transaction_succeeded = update_graph_capacity_fees(G, path, transaction_amount, fee)
                     if transaction_succeeded:
                         successful_transactions += 1
-                        total_length_of_paths += len(path) - 1  # Subtract 1 to get the number of edges
+                        total_length_of_paths += len(path) - 1
+                        if visualize and successful_transactions <= visualize_initial:
+                            visualize_graph(G, total_transactions, fee, capacity, pos, s=s, t=t)
+                        # Subtract 1 to get the number of edges
 
 
             except nx.NetworkXNoPath:
@@ -160,7 +163,8 @@ def simulate_transactions_fees(G, capacity, num_nodes, epsilon, fee, transaction
             break
         prev_success_rate = current_success_rate
     avg_path_length = total_length_of_paths / successful_transactions if successful_transactions > 0 else 0
-    visualize_graph(G, total_transactions, fee, capacity, pos, final=True)
+    if visualize:
+        visualize_graph(G, total_transactions, fee, capacity, pos, final=True)
     return current_success_rate, avg_path_length
 def my_draw_networkx_edge_labels(
     G,
@@ -330,14 +334,19 @@ def my_draw_networkx_edge_labels(
 
     return text_items
 
-def visualize_graph(G, transaction_number, fee, capacity, pos=None, final=False):
+def visualize_graph(G, transaction_number, fee, capacity, pos=None, final=False, s=None, t=None):
     if pos is None:
         pos = nx.spring_layout(G)
 
     fig, ax = plt.subplots(figsize=(8 / 1.2, 6 / 1.2), dpi=300)
     M = G.number_of_edges()
 
-    nx.draw_networkx_nodes(G, pos, ax=ax)
+    nx.draw_networkx_nodes(G, pos, ax=ax, node_color='lightskyblue', edgecolors='black')
+
+    if s is not None and t is not None:
+        # Draw the source and target nodes in different colors
+        nx.draw_networkx_nodes(G, pos, nodelist=[s], ax=ax, node_color='palegreen', edgecolors='black')
+        nx.draw_networkx_nodes(G, pos, nodelist=[t], ax=ax, node_color='lightcoral', edgecolors='black')
 
     nx.draw_networkx_labels(G, pos, ax=ax)
     curved_edges = [edge for edge in G.edges() if reversed(edge) in G.edges()]
@@ -352,11 +361,12 @@ def visualize_graph(G, transaction_number, fee, capacity, pos=None, final=False)
     my_draw_networkx_edge_labels(G, pos, ax=ax, edge_labels=curved_edge_labels, rotate=False, rad=arc_rad)
     nx.draw_networkx_edge_labels(G, pos, ax=ax, edge_labels=straight_edge_labels, rotate=False)
     if final:
-        ax.set_title(f'Graph at steady state, f = {fee}, c = {capacity}', fontsize=14)
-        plt.title(f'Graph at steady state, f = {fee}, c = {capacity}', fontsize=14)
+        ax.set_title(f'Graph at steady state, after {transaction_number} transactions, f = {fee}, c = {capacity}', fontsize=14)
+        plt.title(f'Graph at steady state, after {transaction_number} transactions, f = {fee}, c = {capacity}', fontsize=14)
     else:
         ax.set_title(f'Graph after {transaction_number} transactions, f = {fee}, c = {capacity}', fontsize=14)
         plt.title(f'Graph after {transaction_number} transactions, f = {fee}, c = {capacity}', fontsize=14)
+    plt.axis('off')
     plt.tight_layout()
     plt.show()
     plt.close()
@@ -366,8 +376,8 @@ capacity_range = 5
 transaction_amount = 1
 fee = 0.1
 # fee_range = np.round(np.arange(0.0, 1.1, 0.1), 2)
-epsilon = 0.0002
-num_runs = 20
+epsilon = 0.002
+num_runs = 100
 avg_degree = 10
 window_size = 2000
 
