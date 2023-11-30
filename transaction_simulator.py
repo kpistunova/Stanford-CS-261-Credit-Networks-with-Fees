@@ -77,22 +77,25 @@ def update_graph_capacity_fees(G, path, transaction_amount, fee):
     for i in range(len(path) - 1):
         u, v = path[i], path[i + 1]
         required_capacity = transaction_amount + fees[i]
+        # Round required_capacity to the nearest 0.001
+        required_capacity = round(required_capacity, 3)
         if G[u][v]['capacity'] < required_capacity:
             return False  # Transaction failed due to insufficient capacity
 
-        G[u][v]['capacity'] -= required_capacity
+        G[u][v]['capacity'] = round(G[u][v]['capacity'] - required_capacity, 3)
         if G[u][v]['capacity'] == 0:
             G.remove_edge(u, v)
 
         if G.has_edge(v, u):
-            G[v][u]['capacity'] += required_capacity
+            G[v][u]['capacity'] = round(G[v][u]['capacity'] + required_capacity, 3)
         else:
             G.add_edge(v, u, capacity=required_capacity)
 
     return True
 
 
-def simulate_transactions_fees(G, num_nodes, epsilon, fee, transaction_amount, window_size, pos=None, snapshot_interval=100):
+def simulate_transactions_fees(G, capacity, num_nodes, epsilon, fee, transaction_amount, window_size, pos=None,
+                               visualize=False, visualize_initial=1, visualize_every_n=1000):
     """
     Simulates a series of transactions in a credit network, represented as a directed graph, and computes the
     success rate of these transactions. The success rate is the ratio of successful transactions to the total number
@@ -126,6 +129,7 @@ def simulate_transactions_fees(G, num_nodes, epsilon, fee, transaction_amount, w
       the epsilon threshold, indicating a steady state.
     - At steady state, the function returns the overall success probability, calculated as the ratio of successful transactions to
       the total number of iterations.
+      :param capacity:
     """
     total_transactions = 0
     successful_transactions = 0
@@ -133,14 +137,11 @@ def simulate_transactions_fees(G, num_nodes, epsilon, fee, transaction_amount, w
     total_length_of_paths = 0
     while True:
         for _ in range(window_size):
+            if total_transactions <= visualize_initial:
+                visualize_graph(G, total_transactions, fee, capacity, pos)
             s, t = random.sample(range(num_nodes), 2)
             try:
-                # nxcg_G = nxcg.from_networkx(G)
                 path = nx.shortest_path(G, s, t)
-                # path = cugraph.shortest_path(nxcg_G, s, t)
-                # sssp = cugraph.bfs(G, s)
-                # path = cugraph.utilities.utils.get_traversed_path_list(sssp, t)
-                # path.reverse()
                 # Direct capacity check
                 if min([G[u][v]['capacity'] for u, v in zip(path, path[1:])]) > 0:
                     transaction_succeeded = update_graph_capacity_fees(G, path, transaction_amount, fee)
@@ -159,6 +160,220 @@ def simulate_transactions_fees(G, num_nodes, epsilon, fee, transaction_amount, w
             break
         prev_success_rate = current_success_rate
     avg_path_length = total_length_of_paths / successful_transactions if successful_transactions > 0 else 0
+    visualize_graph(G, total_transactions, fee, capacity, pos, final=True)
     return current_success_rate, avg_path_length
+def my_draw_networkx_edge_labels(
+    G,
+    pos,
+    edge_labels=None,
+    label_pos=0.5,
+    font_size=10,
+    font_color="k",
+    font_family="sans-serif",
+    font_weight="normal",
+    alpha=None,
+    bbox=None,
+    horizontalalignment="center",
+    verticalalignment="center",
+    ax=None,
+    rotate=True,
+    clip_on=True,
+    rad=0
+):
+    """Draw edge labels.
 
+    Parameters
+    ----------
+    G : graph
+        A networkx graph
 
+    pos : dictionary
+        A dictionary with nodes as keys and positions as values.
+        Positions should be sequences of length 2.
+
+    edge_labels : dictionary (default={})
+        Edge labels in a dictionary of labels keyed by edge two-tuple.
+        Only labels for the keys in the dictionary are drawn.
+
+    label_pos : float (default=0.5)
+        Position of edge label along edge (0=head, 0.5=center, 1=tail)
+
+    font_size : int (default=10)
+        Font size for text labels
+
+    font_color : string (default='k' black)
+        Font color string
+
+    font_weight : string (default='normal')
+        Font weight
+
+    font_family : string (default='sans-serif')
+        Font family
+
+    alpha : float or None (default=None)
+        The text transparency
+
+    bbox : Matplotlib bbox, optional
+        Specify text box properties (e.g. shape, color etc.) for edge labels.
+        Default is {boxstyle='round', ec=(1.0, 1.0, 1.0), fc=(1.0, 1.0, 1.0)}.
+
+    horizontalalignment : string (default='center')
+        Horizontal alignment {'center', 'right', 'left'}
+
+    verticalalignment : string (default='center')
+        Vertical alignment {'center', 'top', 'bottom', 'baseline', 'center_baseline'}
+
+    ax : Matplotlib Axes object, optional
+        Draw the graph in the specified Matplotlib axes.
+
+    rotate : bool (deafult=True)
+        Rotate edge labels to lie parallel to edges
+
+    clip_on : bool (default=True)
+        Turn on clipping of edge labels at axis boundaries
+
+    Returns
+    -------
+    dict
+        `dict` of labels keyed by edge
+
+    Examples
+    --------
+
+    Also see the NetworkX drawing examples at
+    https://networkx.org/documentation/latest/auto_examples/index.html
+
+    See Also
+    --------
+    draw
+    draw_networkx
+    draw_networkx_nodes
+    draw_networkx_edges
+    draw_networkx_labels
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    if ax is None:
+        ax = plt.gca()
+    if edge_labels is None:
+        labels = {(u, v): d for u, v, d in G.edges(data=True)}
+    else:
+        labels = edge_labels
+    text_items = {}
+    for (n1, n2), label in labels.items():
+        (x1, y1) = pos[n1]
+        (x2, y2) = pos[n2]
+        (x, y) = (
+            x1 * label_pos + x2 * (1.0 - label_pos),
+            y1 * label_pos + y2 * (1.0 - label_pos),
+        )
+        pos_1 = ax.transData.transform(np.array(pos[n1]))
+        pos_2 = ax.transData.transform(np.array(pos[n2]))
+        linear_mid = 0.5*pos_1 + 0.5*pos_2
+        d_pos = pos_2 - pos_1
+        rotation_matrix = np.array([(0,1), (-1,0)])
+        ctrl_1 = linear_mid + rad*rotation_matrix@d_pos
+        ctrl_mid_1 = 0.5*pos_1 + 0.5*ctrl_1
+        ctrl_mid_2 = 0.5*pos_2 + 0.5*ctrl_1
+        bezier_mid = 0.5*ctrl_mid_1 + 0.5*ctrl_mid_2
+        (x, y) = ax.transData.inverted().transform(bezier_mid)
+
+        if rotate:
+            # in degrees
+            angle = np.arctan2(y2 - y1, x2 - x1) / (2.0 * np.pi) * 360
+            # make label orientation "right-side-up"
+            if angle > 90:
+                angle -= 180
+            if angle < -90:
+                angle += 180
+            # transform data coordinate angle to screen coordinate angle
+            xy = np.array((x, y))
+            trans_angle = ax.transData.transform_angles(
+                np.array((angle,)), xy.reshape((1, 2))
+            )[0]
+        else:
+            trans_angle = 0.0
+        # use default box of white with white border
+        if bbox is None:
+            bbox = dict(boxstyle="round", ec=(1.0, 1.0, 1.0), fc=(1.0, 1.0, 1.0))
+        if not isinstance(label, str):
+            label = str(label)  # this makes "1" and 1 labeled the same
+
+        t = ax.text(
+            x,
+            y,
+            label,
+            size=font_size,
+            color=font_color,
+            family=font_family,
+            weight=font_weight,
+            alpha=alpha,
+            horizontalalignment=horizontalalignment,
+            verticalalignment=verticalalignment,
+            rotation=trans_angle,
+            transform=ax.transData,
+            bbox=bbox,
+            zorder=1,
+            clip_on=clip_on,
+        )
+        text_items[(n1, n2)] = t
+
+    ax.tick_params(
+        axis="both",
+        which="both",
+        bottom=False,
+        left=False,
+        labelbottom=False,
+        labelleft=False,
+    )
+
+    return text_items
+
+def visualize_graph(G, transaction_number, fee, capacity, pos=None, final=False):
+    if pos is None:
+        pos = nx.spring_layout(G)
+
+    fig, ax = plt.subplots(figsize=(8 / 1.2, 6 / 1.2), dpi=300)
+    M = G.number_of_edges()
+
+    nx.draw_networkx_nodes(G, pos, ax=ax)
+
+    nx.draw_networkx_labels(G, pos, ax=ax)
+    curved_edges = [edge for edge in G.edges() if reversed(edge) in G.edges()]
+    straight_edges = list(set(G.edges()) - set(curved_edges))
+    nx.draw_networkx_edges(G, pos, ax=ax, edgelist=straight_edges)
+    arc_rad = 0.25
+    nx.draw_networkx_edges(G, pos, ax=ax, edgelist=curved_edges, connectionstyle=f'arc3, rad = {arc_rad}')
+
+    edge_weights = nx.get_edge_attributes(G, 'capacity')
+    curved_edge_labels = {edge: edge_weights[edge] for edge in curved_edges}
+    straight_edge_labels = {edge: edge_weights[edge] for edge in straight_edges}
+    my_draw_networkx_edge_labels(G, pos, ax=ax, edge_labels=curved_edge_labels, rotate=False, rad=arc_rad)
+    nx.draw_networkx_edge_labels(G, pos, ax=ax, edge_labels=straight_edge_labels, rotate=False)
+    if final:
+        ax.set_title(f'Graph at steady state, f = {fee}, c = {capacity}', fontsize=14)
+        plt.title(f'Graph at steady state, f = {fee}, c = {capacity}', fontsize=14)
+    else:
+        ax.set_title(f'Graph after {transaction_number} transactions, f = {fee}, c = {capacity}', fontsize=14)
+        plt.title(f'Graph after {transaction_number} transactions, f = {fee}, c = {capacity}', fontsize=14)
+    plt.tight_layout()
+    plt.show()
+    plt.close()
+
+num_nodes = 5
+capacity_range = 5
+transaction_amount = 1
+fee = 0.1
+# fee_range = np.round(np.arange(0.0, 1.1, 0.1), 2)
+epsilon = 0.0002
+num_runs = 20
+avg_degree = 10
+window_size = 2000
+
+G = create_random_graph(num_nodes, avg_degree, capacity_range, 'line')
+pos = nx.spring_layout(G)
+success_rate, avg_path_length = simulate_transactions_fees(G, capacity_range , num_nodes, epsilon, fee, transaction_amount,
+                                                           window_size, pos, visualize=True)
+
+print('done!')

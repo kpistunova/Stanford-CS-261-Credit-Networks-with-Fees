@@ -3,12 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
-import nx_cugraph as nxcg
 from transaction_simulator import simulate_transactions_fees, create_random_graph
 import time
 
-from sklearn.cluster import DBSCAN
-from sklearn.preprocessing import StandardScaler
 def simulate_network_network_size_variation(num_nodes, capacity_range, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing = False, checkpoint_interval = 20):
     """
     Simulates a credit network with varying capacities and transaction fees, computes the success rate of transactions,
@@ -49,10 +46,11 @@ def simulate_network_network_size_variation(num_nodes, capacity_range, transacti
         for capacity in capacity_range:
             for node in num_nodes:
                 for run in range(num_runs):
-                    G = create_random_graph(node, avg_degree, capacity)
+                    G = create_random_graph(node, avg_degree, capacity, 'line')
                     pos = nx.spring_layout(G)
-                    success_rate, avg_path_length = simulate_transactions_fees(G, capacity, node, epsilon, fee,
-                                                                               transaction_amount, window_size, pos)
+                    success_rate, avg_path_length = simulate_transactions_fees(G, 1, node, epsilon, fee,
+                                                                               transaction_amount, window_size, pos,
+                                                                               visualize=True)
                     # print(f'Completed run {run}/{num_runs}, degree {degree}, fee {fee}')
 
                     results['nodes'].append(node)
@@ -159,22 +157,21 @@ def plot_results_network_size_variation(df, capacity):
 
 
 # Configuration
-num_nodes = [25, 30, 50, 80, 100, 200, 300, 500, 1000]
+num_nodes = [2, 3, 4, 5, 6, 7, 8, 9, 10]
 capacity_range = [2, 3, 4, 5, 8, 10, 15, 20, 30]
 transaction_amount = 1
-fee_range = [0, 0.1, 0.4, 0.8, 1]
+fee_range = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 epsilon = 0.002
 num_runs = 20
 avg_degree = 10
 window_size = 10000
 
-df = pd.read_pickle('network_size_capacity_all.pkl')
-for capacity in df['capacity'].unique():
-    plot_results_network_size_variation(df, capacity)
+# df = pd.read_pickle('network_size_capacity_all.pkl')
+
 # Simulation
 df = simulate_network_network_size_variation(num_nodes, capacity_range, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing=True)
-df.to_pickle('network_size_capacity_all.pkl')
+df.to_pickle('line_len_vs_fee_capacity.pkl')
 #
 # # Plotting
-plot_results_network_size_variation(df)
-
+for capacity in df['capacity'].unique():
+    plot_results_network_size_variation(df, capacity)

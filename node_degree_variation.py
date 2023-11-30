@@ -51,7 +51,8 @@ def simulate_network_node_degree_fee_variation(num_nodes, capacity_range, transa
                 for run in range(num_runs):
                     G = create_random_graph(num_nodes, degree, capacity)
                     pos = nx.spring_layout(G)
-                    success_rate, avg_path_length = simulate_transactions_fees(G, num_nodes, epsilon, fee, transaction_amount, window_size, pos)
+                    success_rate, avg_path_length = simulate_transactions_fees(G, capacity, num_nodes, epsilon, fee,
+                                                                               transaction_amount, window_size, pos)
                     # print(f'Completed run {run}/{num_runs}, capacity {capacity}, fee {fee}')
                     results['avg_degree'].append(degree)
                     results['run'].append(run)
