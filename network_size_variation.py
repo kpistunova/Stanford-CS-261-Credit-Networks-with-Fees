@@ -166,7 +166,7 @@ fee_range = [0, 0.1, 0.4, 0.8, 1]
 epsilon = 0.002
 num_runs = 20
 avg_degree = 10
-window_size = 10000
+window_size = 1000
 
 df = pd.read_pickle('network_size_capacity_all.pkl')
 for capacity in df['capacity'].unique():

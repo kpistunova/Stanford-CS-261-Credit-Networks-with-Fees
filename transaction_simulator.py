@@ -95,7 +95,7 @@ def update_graph_capacity_fees(G, path, transaction_amount, fee):
 
 
 def simulate_transactions_fees(G, capacity, num_nodes, epsilon, fee, transaction_amount, window_size, pos=None,
-                               visualize=False, visualize_initial=5, visualize_every_n=1000):
+                               visualize=False, visualize_initial=0, visualize_every_n=1000):
     """
     Simulates a series of transactions in a credit network, represented as a directed graph, and computes the
     success rate of these transactions. The success rate is the ratio of successful transactions to the total number
@@ -370,20 +370,46 @@ def visualize_graph(G, transaction_number, fee, capacity, pos=None, final=False,
     plt.tight_layout()
     plt.show()
     plt.close()
+#
+# num_runs = 10
+# num_nodes = [3, 5, 7, 10, 20, 40, 50, 100, 300, 1000]
+# capacity_range = 1
+# transaction_amount = 1
+# fee = 0.0
+# # fee_range = np.round(np.arange(0.0, 1.1, 0.1), 2)
+# epsilon = 0.002
+# num_runs = 3
+# avg_degree = 10
+# window_size = 1000
+# # num_nodes = [2, 3, 4, 5, 6, 7, 8, 9, 10]
+# # # num_nodes = [2, ]
+# # capacity_range = [2, 3, 4, 5, 8, 10, 15, 20, 30]
+# # transaction_amount = 1
+# # fee_range = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+# results = {
+#     'node': [],
+#     'success_rate': [],
+#     'run': []# New field for average path length
+# }
+# for node in num_nodes:
+#     print(f'started node {node}')
+#     for run in range(num_runs):
+#         G = create_random_graph(node, avg_degree, capacity_range, 'cycle')
+#         # pos = nx.spring_layout(G)
+#         pos = nx.circular_layout(G)
+#         success_rate, avg_path_length = simulate_transactions_fees(G, capacity_range , node, epsilon, fee, transaction_amount,
+#                                                                window_size, pos, visualize=False)
+#         results['node'].append(node)
+#         results['success_rate'].append(success_rate)
+#         results['run'].append(run)
+#
+# result=pd.DataFrame(results)
+# sns.set_theme()  # Apply the default theme
+# plt.figure(figsize=(10, 6))
+# plt.ylim([0.0, 1.1])
+# sns.lineplot(x='node', y='success_rate', data=result, marker ='o')  # Creates a scatter plot
+# plt.show()
+#
+# print(f'success rate is {success_rate}')
+# print(f'Average path is {avg_path_length}')
 
-num_nodes = 5
-capacity_range = 5
-transaction_amount = 1
-fee = 0.1
-# fee_range = np.round(np.arange(0.0, 1.1, 0.1), 2)
-epsilon = 0.002
-num_runs = 100
-avg_degree = 10
-window_size = 2000
-
-G = create_random_graph(num_nodes, avg_degree, capacity_range, 'line')
-pos = nx.spring_layout(G)
-success_rate, avg_path_length = simulate_transactions_fees(G, capacity_range , num_nodes, epsilon, fee, transaction_amount,
-                                                           window_size, pos, visualize=True)
-
-print('done!')

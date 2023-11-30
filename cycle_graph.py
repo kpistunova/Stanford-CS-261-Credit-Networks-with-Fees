@@ -52,7 +52,7 @@ def simulate_network_network_size_variation(num_nodes, capacity_range, transacti
                     #     visualize = True
                     # else:
                     #     visualize = False
-                    G = create_random_graph(node, avg_degree, capacity, 'line')
+                    G = create_random_graph(node, avg_degree, capacity, 'cycle')
                     pos = nx.spring_layout(G)
                     success_rate, avg_path_length = simulate_transactions_fees(G, capacity, node, epsilon, fee,
                                                                                transaction_amount, window_size, pos, visualize=False
@@ -73,13 +73,13 @@ def simulate_network_network_size_variation(num_nodes, capacity_range, transacti
                         checkpoint_filename = f'checkpoint_capacity_fixed_{capacity}_fee_{fee}_run_{run}_node_{node}.pkl'
                         checkpoint_df.to_pickle(checkpoint_filename)
                         # print(f'Saved checkpoint to {checkpoint_filename}')
-            end_time = time.time()
-            execution_time = end_time - start_time
-            total_execution_time += execution_time
-            remaining_fees = len(fee_range) - (fee_range.index(fee) + 1)
-            estimated_remaining_time = remaining_fees * (total_execution_time / (fee_range.index(fee) + 1))
-            print(f"Processed fee {fee} in time {execution_time} seconds")
-            print(f"Estimated remaining time: {estimated_remaining_time / 60} minutes\n")
+        end_time = time.time()
+        execution_time = end_time - start_time
+        total_execution_time += execution_time
+        remaining_fees = len(fee_range) - (fee_range.index(fee) + 1)
+        estimated_remaining_time = remaining_fees * (total_execution_time / (fee_range.index(fee) + 1))
+        print(f"Processed fee {fee} in time {execution_time} seconds")
+        print(f"Estimated remaining time: {estimated_remaining_time / 60} minutes\n")
     return pd.DataFrame(results)
 
 def plot_results_network_size_variation(df, capacity):
@@ -120,7 +120,7 @@ def plot_results_network_size_variation(df, capacity):
     plt.xlim(left=-0.01)
 
     plt.tight_layout()
-    fig.savefig(f'line_network_size_var_capacity_{capacity}.png', dpi=300, bbox_inches='tight')
+    fig.savefig(f'cycle_len_vs_fee_capacity_{capacity}.png', dpi=300, bbox_inches='tight')
     plt.show()
 
     fig, ax = plt.subplots(figsize=(8 / 1.2, 6 / 1.2), dpi=300)
@@ -148,7 +148,7 @@ def plot_results_network_size_variation(df, capacity):
     plt.xlim(left=0.95)
     # Save the figure with tight layout
     plt.tight_layout()
-    fig.savefig(f'line_network_size_var_capacity_path_lenght_{capacity}.png', dpi=300, bbox_inches='tight')
+    fig.savefig(f'cycle_len_vs_fee_capacity_{capacity}.png', dpi=300, bbox_inches='tight')
     # Display the plot
     plt.show()
     # Heatmap
@@ -164,24 +164,24 @@ def plot_results_network_size_variation(df, capacity):
 
 
 # Configuration
-num_nodes = [2, 3, 4, 5, 6, 7, 8, 9, 10]
+num_nodes = [3, 4, 5, 7, 10, 20, 40, 70, 100, 500, 1000]
 # num_nodes = [2, ]
-capacity_range = [2, 3, 4, 5, 8, 10, 15, 20, 30]
+capacity_range = [2, 4, 8, 10, 15, 30, 50, 100, 1000, 100000000]
 transaction_amount = 1
-fee_range = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+fee_range = [0, 0.1, 0.3, 0.8, 1]
 epsilon = 0.002
-num_runs = 20
+num_runs = 5
 avg_degree = 10
 window_size = 1000
 
-df = pd.read_pickle('line_len_vs_fee_capacity.pkl')
-df_filtered = df[df['fee'] != 0.0]
+# df = pd.read_pickle('cycle_len_vs_fee_capacity.pkl')
+# df_filtered = df[df['fee'] != 0.0]
 
-for capacity in df_filtered['capacity'].unique():
-    plot_results_network_size_variation(df_filtered, capacity)
+# for capacity in df_filtered['capacity'].unique():
+#     plot_results_network_size_variation(df_filtered, capacity)
 # Simulation
 df = simulate_network_network_size_variation(num_nodes, capacity_range, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing=True)
-df.to_pickle('line_len_vs_fee_capacity.pkl')
+df.to_pickle('cycle_len_vs_fee_capacity.pkl')
 #
 # # Plotting
 for capacity in df['capacity'].unique():
