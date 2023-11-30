@@ -117,7 +117,7 @@ def simulate_transactions_fees(G, num_nodes, epsilon, fee, transaction_amount, w
     total_transactions = 0
     successful_transactions = 0
     prev_success_rate = -1
-
+    total_length_of_paths = 0
     while True:
         for _ in range(window_size):
             s, t = random.sample(range(num_nodes), 2)
@@ -133,6 +133,8 @@ def simulate_transactions_fees(G, num_nodes, epsilon, fee, transaction_amount, w
                     transaction_succeeded = update_graph_capacity_fees(G, path, transaction_amount, fee)
                     if transaction_succeeded:
                         successful_transactions += 1
+                        total_length_of_paths += len(path) - 1  # Subtract 1 to get the number of edges
+
 
             except nx.NetworkXNoPath:
                 pass
@@ -143,7 +145,7 @@ def simulate_transactions_fees(G, num_nodes, epsilon, fee, transaction_amount, w
         if prev_success_rate != -1 and abs(current_success_rate - prev_success_rate) < epsilon:
             break
         prev_success_rate = current_success_rate
-
-    return current_success_rate
+    avg_path_length = total_length_of_paths / successful_transactions if successful_transactions > 0 else 0
+    return current_success_rate, avg_path_length
 
 

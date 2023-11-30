@@ -40,6 +40,7 @@ def simulate_network_capacity_fee_variation(num_nodes, capacity_range, transacti
         'run': [],
         'success_rate': [],
         'fee': [],
+        'avg_path_length': []  # New field for average path length
     }
     total_execution_time = 0
     for fee in fee_range:
@@ -48,25 +49,27 @@ def simulate_network_capacity_fee_variation(num_nodes, capacity_range, transacti
             for run in range(num_runs):
                 G = create_random_graph(num_nodes, avg_degree, capacity)
                 pos = nx.spring_layout(G)
-                success_rate = simulate_transactions_fees(G, num_nodes, epsilon, fee, transaction_amount, window_size, pos)
+                success_rate, avg_path_length = simulate_transactions_fees(G, num_nodes, epsilon, fee, transaction_amount, window_size, pos)
                 # print(f'Completed run {run}/{num_runs}, capacity {capacity}, fee {fee}')
 
                 results['capacity'].append(capacity)
                 results['run'].append(run)
                 results['success_rate'].append(success_rate)
                 results['fee'].append(fee)
+                results['avg_path_length'].append(avg_path_length)
+
 
                 if checkpointing == True and run % checkpoint_interval == 0:
-                    # print(f'Completed run {run}/{num_runs}, capacity {capacity}, fee {fee}')
-                    checkpoint_df = pd.DataFrame(results)
-                    checkpoint_filename = f'checkpoint_capacity_fixed_{capacity}_fee_{fee}_run_{run}.pkl'
-                    checkpoint_df.to_pickle(checkpoint_filename)
-                    print(f'Saved checkpoint to {checkpoint_filename}')
+                    print(f'Completed run {run}/{num_runs}, capacity {capacity}, fee {fee}')
+                    # checkpoint_df = pd.DataFrame(results)
+                    # checkpoint_filename = f'checkpoint_capacity_fixed_{capacity}_fee_{fee}_run_{run}.pkl'
+                    # checkpoint_df.to_pickle(checkpoint_filename)
+                    # print(f'Saved checkpoint to {checkpoint_filename}')
         end_time = time.time()
         execution_time = end_time - start_time
         total_execution_time += execution_time
-        remaining_fees = len(fee_range) - (fee_range.tolist().index(fee) + 1)
-        estimated_remaining_time = remaining_fees * (total_execution_time / (fee_range.tolist().index(fee) + 1))
+        remaining_fees = len(fee_range) - (fee_range.index(fee) + 1)
+        estimated_remaining_time = remaining_fees * (total_execution_time / (fee_range.index(fee) + 1))
         print(f"Processed fee {fee} in time {execution_time} seconds")
         print(f"Estimated remaining time: {estimated_remaining_time/60} minutes\n")
     return pd.DataFrame(results)
@@ -88,9 +91,9 @@ def plot_results_capacity_fee_variation(df):
     cmap = sns.cubehelix_palette(as_cmap=True)
     sns.set_theme()
     fig = plt.figure(figsize=(8 / 1.2, 6 / 1.2), dpi=300)
-    sns.lineplot(data=df, x='capacity', y='success_rate', hue='fee', marker='o', ci='sd', legend=False)
+    sns.lineplot(data=df, x='capacity', y='success_rate', hue='fee', marker='o', ci='sd', legend='full')
 
-    plt.xlabel('Edge capacity', fontsize=14)
+    plt.xlabel('Edge Capacity', fontsize=14)
     plt.ylabel('Success Rate', fontsize=14)
     plt.xticks(fontsize=12)
     plt.yticks(fontsize=12)
@@ -100,18 +103,41 @@ def plot_results_capacity_fee_variation(df):
     plt.xlim(left = 0)
 
     plt.tight_layout()
-    fig.savefig('capacity_vs_fees_vm.png', dpi=300, bbox_inches='tight')
+    fig.savefig('capacity_vs_fees_path_lenght_avg_degree_20.png', dpi=300, bbox_inches='tight')
+    plt.show()
+
+    fig, ax = plt.subplots(figsize=(8 / 1.2, 6 / 1.2), dpi=300)
+    # Use transparency to alleviate overplotting
+    sns.lineplot(data=df, x='avg_path_length', y='success_rate', hue='capacity', style='fee',
+                 palette='coolwarm', markers=True, dashes=False, alpha=0.7, ax=ax)
+    # Improve the legibility of the plot
+    plt.xlabel('Average path length', fontsize=16)
+    plt.ylabel('Success Rate', fontsize=16)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    ax.xaxis.labelpad = 15
+    ax.yaxis.labelpad = 15
+    # Adjust legend
+    handles, labels = ax.get_legend_handles_labels()
+    legend = ax.legend(title='Legend', loc='best', fontsize='x-small', title_fontsize='small')
+    # Set the limits appropriately
+    plt.ylim([0.3, 1.1])
+    plt.xlim([1.5, 3])
+    # Save the figure with tight layout
+    plt.tight_layout()
+    fig.savefig('improved_plot_smol_capacity_vs_fees_path_lenght_avg_degree_20.png', dpi=300)
+    # Display the plot
     plt.show()
 
     # Heatmap
     pivot_table = df.pivot_table(values='success_rate', index='fee', columns='capacity', aggfunc='mean')
     plt.figure(figsize=(10, 8))
-    sns.heatmap(pivot_table, annot=True, fmt=".2f", cmap=cmap, vmin=0, cbar_kws={'label': 'Success Rate'}, square=True, legend=False)
+    sns.heatmap(pivot_table, annot=True, fmt=".2f", cmap=cmap, vmin=0, cbar_kws={'label': 'Success Rate'}, square=True)
 
     plt.title('Success Rate by Fee and Capacity')
     plt.xlabel('Edge Capacity')
     plt.ylabel('Fee')
-    plt.savefig('heatmap_capacity_vs_fees_vm', dpi=300, bbox_inches='tight')
+    plt.savefig('heatmap_capacity_vs_fees_path_lenght_avg_degree_20', dpi=300, bbox_inches='tight')
     plt.show()
 
 def identify_outliers(df, column,  multiplier=0.8 ):
@@ -139,25 +165,23 @@ def identify_outliers(df, column,  multiplier=0.8 ):
 
 # Configuration
 num_nodes = 100
-capacity_range = np.arange(1.0, 16, 1)
-capacity_range = np.append(capacity_range, 20)
+capacity_range = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,20,30]
+# capacity_range = [25, 30, 50, 100, 300]
 transaction_amount = 1
 # fee_range = [2.2, 2.5, 2.7, 3, 4, 5, 6, 7, 8]
-fee_range = np.round(np.arange(0.0, 1.01, 0.01), 2)
+fee_range = [0.0, 0.1, 0.3, 0.5, 0.7, 0.9, 1]
 epsilon = 0.002
 num_runs = 20
-avg_degree = 10
+avg_degree = 20
 window_size = 1000
-
-df = pd.read_pickle('capacity_gpu.pkl')
+df = pd.read_pickle('capacity_vs_fees_path_lenght_avg_degree_20.pkl')
 
 # Simulation
 df = simulate_network_capacity_fee_variation(num_nodes, capacity_range, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing=True)
-df.to_pickle('capacity_gpu_test.pkl')
+df.to_pickle('capacity_vs_fees_path_lenght_avg_degree_20.pkl')
+plot_results_capacity_fee_variation(df)
 #
 # # Plotting
-plot_results_capacity_fee_variation(df)
-
 #----code-fee-variation-plotting-with-fixed-capacity-----------
 
 
