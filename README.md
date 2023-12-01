@@ -76,6 +76,12 @@ poetry install
 Just keep in mind that `requirements.txt` is the ground source of truth, and our `pyproject.toml` may run out of date.
 
 
+## Google Cloud
+
+https://askubuntu.com/a/1261782
+
+
+
 [//]: # ()
 [//]: # ()
 [//]: # (## Modeling)
