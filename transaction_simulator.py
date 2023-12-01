@@ -3,9 +3,9 @@ import random
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
-import nx_cugraph as nxcg
-import cugraph
-import cudf
+# import nx_cugraph as nxcg # Kate, I had to temporarily comment this out becuase I don't have GPUs -Russell
+# import cugraph # Kate, I had to temporarily comment this out becuase I don't have GPUs -Russell
+# import cudf # Kate, I had to temporarily comment this out becuase I don't have GPUs -Russell
 def create_random_graph(num_nodes, avg_degree, fixed_total_capacity, type = 'random'):
     """
     Creates a random directed graph with a specified average degree and fixed total capacity for each edge.

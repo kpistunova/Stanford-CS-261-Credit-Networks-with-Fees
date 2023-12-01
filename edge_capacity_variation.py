@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
-import nx_cugraph as nxcg
+# import nx_cugraph as nxcg # Kate, I had to temporarily comment this out becuase I don't have GPUs -Russell
 from transaction_simulator import simulate_transactions_fees, create_random_graph
 import time
 
@@ -164,97 +164,99 @@ def identify_outliers(df, column,  multiplier=0.8 ):
     upper_bound = Q3 + multiplier * IQR
     return df[(df[column] < lower_bound) | (df[column] > upper_bound)]
 
-# Configuration
-num_nodes = 100
-capacity_range = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,20,30]
-# capacity_range = [25, 30, 50, 100, 300]
-transaction_amount = 1
-# fee_range = [2.2, 2.5, 2.7, 3, 4, 5, 6, 7, 8]
-fee_range = [0.0, 0.1, 0.3, 0.5, 0.7, 0.9, 1]
-epsilon = 0.002
-num_runs = 20
-avg_degree = 20
-window_size = 1000
-df = pd.read_pickle('capacity_vs_fees_path_lenght_avg_degree_20.pkl')
+if __name__ == '__main__':
+    print("Hello world!")
+    # Configuration
+    num_nodes = 100
+    capacity_range = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,20,30]
+    # capacity_range = [25, 30, 50, 100, 300]
+    transaction_amount = 1
+    # fee_range = [2.2, 2.5, 2.7, 3, 4, 5, 6, 7, 8]
+    fee_range = [0.0, 0.1, 0.3, 0.5, 0.7, 0.9, 1]
+    epsilon = 0.002
+    num_runs = 20
+    avg_degree = 20
+    window_size = 1000
+    # df = pd.read_pickle('capacity_vs_fees_path_lenght_avg_degree_20.pkl') # Not found in Github  -Russell
 
-# Simulation
-df = simulate_network_capacity_fee_variation(num_nodes, capacity_range, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing=True)
-df.to_pickle('capacity_vs_fees_path_lenght_avg_degree_20.pkl')
-plot_results_capacity_fee_variation(df)
-#
-# # Plotting
-#----code-fee-variation-plotting-with-fixed-capacity-----------
-
-
-# mean_success_rates = df.groupby('fee')['success_rate'].mean().reset_index()
-# top_fees = mean_success_rates.sort_values(by='success_rate', ascending=False).head(7)
-#
-#
-# sns.set_theme()
-# fig, ax = plt.subplots(figsize=(8/ 1.2, 6 / 1.2), dpi=300)
-# lineplot = sns.lineplot(data=df, x='fee', y='success_rate', hue='fee', marker='o', ci='sd',  err_style = 'bars', legend=False, ax=ax)
-# for line in ax.lines[1:]:
-#     line.set_alpha(0.7)
-# plt.xlabel('Fee', fontsize=14)
-# plt.ylabel('Success Rate', fontsize=14)
-# plt.xticks(fontsize=12)
-# plt.yticks(fontsize=12)
-# # plt.title('Total capacity = 1, transaction = 1, nodes = 200', fontsize=14)
-# # plt.legend(title='Fee', title_fontsize='13', fontsize='12', loc='upper left', bbox_to_anchor=(1, 1))
-# plt.ylim(top=1.01)
-# plt.ylim(bottom=0)
-# plt.xlim(left=-0.01)
-# for _, row in top_fees.iterrows():
-#     ax.annotate(f"{row['fee']}",  # Change here to match the format of fees
-#                 xy=(row['fee'], row['success_rate']),
-#                 xytext=(25, 5),  # Adjust to position the text to the top right
-#                 textcoords='offset points',
-#                 ha='right',
-#                 va='bottom')
-# plt.tight_layout()
-# fig.savefig('capacity_fixed_zoom_in_no_errors', dpi=300, bbox_inches='tight')
-# plt.show()
+    # Simulation
+    df = simulate_network_capacity_fee_variation(num_nodes, capacity_range, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing=True)
+    df.to_pickle('capacity_vs_fees_path_lenght_avg_degree_20.pkl')
+    plot_results_capacity_fee_variation(df)
+    #
+    # # Plotting
+    #----code-fee-variation-plotting-with-fixed-capacity-----------
 
 
-print('------------------')
-print('Finished!')
+    # mean_success_rates = df.groupby('fee')['success_rate'].mean().reset_index()
+    # top_fees = mean_success_rates.sort_values(by='success_rate', ascending=False).head(7)
+    #
+    #
+    # sns.set_theme()
+    # fig, ax = plt.subplots(figsize=(8/ 1.2, 6 / 1.2), dpi=300)
+    # lineplot = sns.lineplot(data=df, x='fee', y='success_rate', hue='fee', marker='o', ci='sd',  err_style = 'bars', legend=False, ax=ax)
+    # for line in ax.lines[1:]:
+    #     line.set_alpha(0.7)
+    # plt.xlabel('Fee', fontsize=14)
+    # plt.ylabel('Success Rate', fontsize=14)
+    # plt.xticks(fontsize=12)
+    # plt.yticks(fontsize=12)
+    # # plt.title('Total capacity = 1, transaction = 1, nodes = 200', fontsize=14)
+    # # plt.legend(title='Fee', title_fontsize='13', fontsize='12', loc='upper left', bbox_to_anchor=(1, 1))
+    # plt.ylim(top=1.01)
+    # plt.ylim(bottom=0)
+    # plt.xlim(left=-0.01)
+    # for _, row in top_fees.iterrows():
+    #     ax.annotate(f"{row['fee']}",  # Change here to match the format of fees
+    #                 xy=(row['fee'], row['success_rate']),
+    #                 xytext=(25, 5),  # Adjust to position the text to the top right
+    #                 textcoords='offset points',
+    #                 ha='right',
+    #                 va='bottom')
+    # plt.tight_layout()
+    # fig.savefig('capacity_fixed_zoom_in_no_errors', dpi=300, bbox_inches='tight')
+    # plt.show()
 
 
-#----code-for-clustering-analysis-----------
+    print('------------------')
+    print('Finished!')
 
-# # Standardize the data
-# scaler = StandardScaler()
-# mean_success_rates_scaled = scaler.fit_transform(mean_success_rates[['fee', 'success_rate']])
-#
-# # Apply DBSCAN
-# dbscan = DBSCAN(eps=0.5, min_samples=5)
-# clusters = dbscan.fit_predict(mean_success_rates_scaled)
-#
-# # Adding cluster information to the mean_success_rates dataframe
-# mean_success_rates['cluster'] = clusters
-# mean_success_rates = df[df['cluster'] != -1].groupby('cluster')['success_rate'].mean()
-#
-# # plotting
-# fig, ax = plt.subplots(figsize=(8 / 1.2, 6 / 1.2), dpi=300)
-# sns.scatterplot(data=df, x='fee', y='cluster', hue='fee', marker='o', legend=False, ax=ax)
-# # Adding horizontal lines for the average success rates and annotating them
-# for cluster in mean_success_rates.index:
-#     y_coordinate = cluster
-#     ax.axhline(y=y_coordinate, color='gray', linestyle='--', linewidth=1)
-#     ax.text(0.5, y_coordinate - 0.07, f' Avg. Success Rate: {mean_success_rates[cluster]:.2f} ',
-#             transform=ax.get_yaxis_transform(),
-#             ha='center', va='top', color='gray', bbox=dict(facecolor='white', edgecolor='none', alpha=0.7))
-# # Annotate the outlier points with their fee values
-# for index, row in outliers.iterrows():
-#     ax.annotate(f'{row.fee:.3f}', xy=(row.fee, row.cluster), xytext=(0,10), textcoords='offset points', ha='center')
-#
-# plt.xlabel('Fee', fontsize=14)
-# plt.ylabel('Cluster', fontsize=14)
-# plt.xticks(fontsize=12)
-# plt.yticks(fontsize=12)
-# plt.ylim(top=1.05)
-# plt.ylim(bottom=-1.05)
-# plt.xlim([-0.05, 1.05])
-# plt.tight_layout()
-# fig.savefig('capacity_vs_fees_mean_capacity_cluster.png', dpi=300, bbox_inches='tight')
-# plt.show()
+
+    #----code-for-clustering-analysis-----------
+
+    # # Standardize the data
+    # scaler = StandardScaler()
+    # mean_success_rates_scaled = scaler.fit_transform(mean_success_rates[['fee', 'success_rate']])
+    #
+    # # Apply DBSCAN
+    # dbscan = DBSCAN(eps=0.5, min_samples=5)
+    # clusters = dbscan.fit_predict(mean_success_rates_scaled)
+    #
+    # # Adding cluster information to the mean_success_rates dataframe
+    # mean_success_rates['cluster'] = clusters
+    # mean_success_rates = df[df['cluster'] != -1].groupby('cluster')['success_rate'].mean()
+    #
+    # # plotting
+    # fig, ax = plt.subplots(figsize=(8 / 1.2, 6 / 1.2), dpi=300)
+    # sns.scatterplot(data=df, x='fee', y='cluster', hue='fee', marker='o', legend=False, ax=ax)
+    # # Adding horizontal lines for the average success rates and annotating them
+    # for cluster in mean_success_rates.index:
+    #     y_coordinate = cluster
+    #     ax.axhline(y=y_coordinate, color='gray', linestyle='--', linewidth=1)
+    #     ax.text(0.5, y_coordinate - 0.07, f' Avg. Success Rate: {mean_success_rates[cluster]:.2f} ',
+    #             transform=ax.get_yaxis_transform(),
+    #             ha='center', va='top', color='gray', bbox=dict(facecolor='white', edgecolor='none', alpha=0.7))
+    # # Annotate the outlier points with their fee values
+    # for index, row in outliers.iterrows():
+    #     ax.annotate(f'{row.fee:.3f}', xy=(row.fee, row.cluster), xytext=(0,10), textcoords='offset points', ha='center')
+    #
+    # plt.xlabel('Fee', fontsize=14)
+    # plt.ylabel('Cluster', fontsize=14)
+    # plt.xticks(fontsize=12)
+    # plt.yticks(fontsize=12)
+    # plt.ylim(top=1.05)
+    # plt.ylim(bottom=-1.05)
+    # plt.xlim([-0.05, 1.05])
+    # plt.tight_layout()
+    # fig.savefig('capacity_vs_fees_mean_capacity_cluster.png', dpi=300, bbox_inches='tight')
+    # plt.show()
