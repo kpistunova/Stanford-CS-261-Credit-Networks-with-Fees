@@ -7,7 +7,6 @@ authors = ["Your Name <you@example.com>"]
 [[tool.poetry.source]]
 name = "nvidia-pypi"
 url = "https://pypi.nvidia.com"
-priority = "supplemental"
 
 
 [tool.poetry.dependencies]
