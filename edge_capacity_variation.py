@@ -6,6 +6,8 @@ import pandas as pd
 # import nx_cugraph as nxcg # Kate, I had to temporarily comment this out becuase I don't have GPUs -Russell
 from transaction_simulator import simulate_transactions_fees, create_random_graph
 import time
+import uuid
+from datetime import datetime
 
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import StandardScaler
@@ -75,7 +77,10 @@ def simulate_network_capacity_fee_variation(num_nodes, capacity_range, transacti
         print(f"Estimated remaining time: {estimated_remaining_time/60} minutes\n")
     return pd.DataFrame(results)
 
-def plot_results_capacity_fee_variation(df):
+def generate_filename_timestamp_suffix():
+    return f"_{uuid.uuid4()}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+
+def plot_results_capacity_fee_variation(df, filename_suffix=""):
     """
     Plots the results of the network simulation, showing the relationship between edge capacity, fees, and
     transaction success rate.
@@ -104,7 +109,7 @@ def plot_results_capacity_fee_variation(df):
     plt.xlim(left = 0)
 
     plt.tight_layout()
-    fig.savefig('capacity_vs_fees_path_lenght_avg_degree_20.png', dpi=300, bbox_inches='tight')
+    fig.savefig(f'capacity_vs_fees_{filename_suffix}.png', dpi=300, bbox_inches='tight')
     plt.show()
 
     fig, ax = plt.subplots(figsize=(8 / 1.2, 6 / 1.2), dpi=300)
@@ -126,7 +131,7 @@ def plot_results_capacity_fee_variation(df):
     plt.xlim([1.5, 3])
     # Save the figure with tight layout
     plt.tight_layout()
-    fig.savefig('improved_plot_smol_capacity_vs_fees_path_lenght_avg_degree_20.png', dpi=300)
+    fig.savefig(f'improved_plot_smol_capacity_vs_fees_{filename_suffix}.png', dpi=300)
     # Display the plot
     plt.show()
 
@@ -138,7 +143,7 @@ def plot_results_capacity_fee_variation(df):
     plt.title('Success Rate by Fee and Capacity')
     plt.xlabel('Edge Capacity')
     plt.ylabel('Fee')
-    plt.savefig('heatmap_capacity_vs_fees_path_lenght_avg_degree_20', dpi=300, bbox_inches='tight')
+    plt.savefig(f'heatmap_capacity_vs_fees_{filename_suffix}.png', dpi=300, bbox_inches='tight')
     plt.show()
 
 def identify_outliers(df, column,  multiplier=0.8 ):
@@ -164,8 +169,31 @@ def identify_outliers(df, column,  multiplier=0.8 ):
     upper_bound = Q3 + multiplier * IQR
     return df[(df[column] < lower_bound) | (df[column] > upper_bound)]
 
-if __name__ == '__main__':
-    print("Hello world!")
+def russell_run_baseline_varying_transaction():
+    """ The idea for these forthcoming experiments is that we're going to vary transaction amount IN ADDITION TO capacities and fees.
+    So this is the baseline configuration for me to compare against.
+    """
+
+    # Config for the baseline of the varying transaction amount experiment
+    num_nodes = 100
+    capacity_range = np.arange(1.0, 16, 1)
+    capacity_range = np.append(capacity_range, 20)
+    transaction_amount = 1
+    fee_range = list(np.round(np.arange(0.0, 1.01, 0.05), 2))
+    epsilon = 0.002
+    num_runs = 10
+    avg_degree = 10
+    window_size = 500
+
+    # Simulation
+    df = simulate_network_capacity_fee_variation(num_nodes, capacity_range, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing=True)
+    df.to_pickle('russell_run_baseline_varying_transaction.pkl')
+    plot_results_capacity_fee_variation(df, "russell_run_baseline_varying_transaction" + generate_filename_timestamp_suffix())
+
+
+def kate_run_typical_edge_capacity_variation_experiment():
+    """ I've just moved the other "main" code over --Russell
+    """
     # Configuration
     num_nodes = 100
     capacity_range = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,20,30]
@@ -177,7 +205,7 @@ if __name__ == '__main__':
     num_runs = 20
     avg_degree = 20
     window_size = 1000
-    # df = pd.read_pickle('capacity_vs_fees_path_lenght_avg_degree_20.pkl') # Not found in Github  -Russell
+    df = pd.read_pickle('capacity_vs_fees_path_lenght_avg_degree_20.pkl') # Not found in Github  -Russell
 
     # Simulation
     df = simulate_network_capacity_fee_variation(num_nodes, capacity_range, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing=True)
@@ -260,3 +288,10 @@ if __name__ == '__main__':
     # plt.tight_layout()
     # fig.savefig('capacity_vs_fees_mean_capacity_cluster.png', dpi=300, bbox_inches='tight')
     # plt.show()
+
+
+if __name__ == '__main__':
+    print("Hello world!", flush=True)
+    russell_run_baseline_varying_transaction()
+    print('------------------', flush=True)
+    print('Finished!', flush=True)
