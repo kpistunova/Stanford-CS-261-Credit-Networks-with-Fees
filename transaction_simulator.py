@@ -72,24 +72,27 @@ def update_graph_capacity_fees(G, path, transaction_amount, fee):
     - For each edge in the path, if the reverse edge exists, its capacity is increased by the transaction amount
       and fees; otherwise, a new reverse edge is created with that capacity.
     """
-    fees = [(len(path) - i - 2) * fee for i in range(len(path) - 1)]
+    # We are rounding because sometimes 0.1 + 0.2 = 0.30000000004 etc
+    fees = [round((len(path) - i - 2) * fee, 3) for i in range(len(path) - 1)]
+    required_capacities = [transaction_amount + fee for fee in fees]
 
-    for i in range(len(path) - 1):
-        u, v = path[i], path[i + 1]
-        required_capacity = transaction_amount + fees[i]
-        # Round required_capacity to the nearest 0.001
-        required_capacity = round(required_capacity, 3)
-        if G[u][v]['capacity'] < required_capacity:
-            return False  # Transaction failed due to insufficient capacity
+    # Check if all edges have sufficient capacity first
+    for i, (u, v) in enumerate(zip(path, path[1:])):
+        if G[u][v]['capacity'] < required_capacities[i]:
+            return False  # Transaction failed due to insufficient capacity for at least one edge
 
-        G[u][v]['capacity'] = round(G[u][v]['capacity'] - required_capacity, 3)
+    # All edges have sufficient capacity, proceed to update
+    for i, (u, v) in enumerate(zip(path, path[1:])):
+        # Update capacities
+        G[u][v]['capacity'] = round(G[u][v]['capacity'] - required_capacities[i], 3)
         if G[u][v]['capacity'] == 0:
             G.remove_edge(u, v)
 
+        # Update or create the reverse edge
         if G.has_edge(v, u):
-            G[v][u]['capacity'] = round(G[v][u]['capacity'] + required_capacity, 3)
+            G[v][u]['capacity'] = round(G[v][u]['capacity'] + required_capacities[i], 3)
         else:
-            G.add_edge(v, u, capacity=required_capacity)
+            G.add_edge(v, u, capacity=required_capacities[i])
 
     return True
 
@@ -371,45 +374,44 @@ def visualize_graph(G, transaction_number, fee, capacity, pos=None, final=False,
     plt.show()
     plt.close()
 #
-# num_runs = 10
-# num_nodes = [3, 5, 7, 10, 20, 40, 50, 100, 300, 1000]
-# capacity_range = 1
+num_nodes = [5]
+capacity_range = 5
+transaction_amount = 1
+fee = 0.1
+# fee_range = np.round(np.arange(0.0, 1.1, 0.1), 2)
+epsilon = 0.002
+num_runs = 3
+avg_degree = 10
+window_size = 1000
+# num_nodes = [2, 3, 4, 5, 6, 7, 8, 9, 10]
+# # num_nodes = [2, ]
+# capacity_range = [2, 3, 4, 5, 8, 10, 15, 20, 30]
 # transaction_amount = 1
-# fee = 0.0
-# # fee_range = np.round(np.arange(0.0, 1.1, 0.1), 2)
-# epsilon = 0.002
-# num_runs = 3
-# avg_degree = 10
-# window_size = 1000
-# # num_nodes = [2, 3, 4, 5, 6, 7, 8, 9, 10]
-# # # num_nodes = [2, ]
-# # capacity_range = [2, 3, 4, 5, 8, 10, 15, 20, 30]
-# # transaction_amount = 1
-# # fee_range = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-# results = {
-#     'node': [],
-#     'success_rate': [],
-#     'run': []# New field for average path length
-# }
-# for node in num_nodes:
-#     print(f'started node {node}')
-#     for run in range(num_runs):
-#         G = create_random_graph(node, avg_degree, capacity_range, 'cycle')
-#         # pos = nx.spring_layout(G)
-#         pos = nx.circular_layout(G)
-#         success_rate, avg_path_length = simulate_transactions_fees(G, capacity_range , node, epsilon, fee, transaction_amount,
-#                                                                window_size, pos, visualize=False)
-#         results['node'].append(node)
-#         results['success_rate'].append(success_rate)
-#         results['run'].append(run)
-#
-# result=pd.DataFrame(results)
-# sns.set_theme()  # Apply the default theme
-# plt.figure(figsize=(10, 6))
-# plt.ylim([0.0, 1.1])
-# sns.lineplot(x='node', y='success_rate', data=result, marker ='o')  # Creates a scatter plot
-# plt.show()
-#
-# print(f'success rate is {success_rate}')
-# print(f'Average path is {avg_path_length}')
+# fee_range = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+results = {
+    'node': [],
+    'success_rate': [],
+    'run': []
+}
+for node in num_nodes:
+    print(f'started node {node}')
+    for run in range(num_runs):
+        G = create_random_graph(node, avg_degree, capacity_range, 'line')
+        pos = nx.spring_layout(G)
+        # pos = nx.circular_layout(G)
+        success_rate, avg_path_length = simulate_transactions_fees(G, capacity_range , node, epsilon, fee, transaction_amount,
+                                                               window_size, pos, visualize=True, visualize_initial = 5)
+        results['node'].append(node)
+        results['success_rate'].append(success_rate)
+        results['run'].append(run)
+
+result=pd.DataFrame(results)
+sns.set_theme()  # Apply the default theme
+plt.figure(figsize=(10, 6))
+plt.ylim([0.0, 1.1])
+sns.lineplot(x='node', y='success_rate', data=result, marker ='o')  # Creates a scatter plot
+plt.show()
+
+print(f'success rate is {success_rate}')
+print(f'Average path is {avg_path_length}')
 
