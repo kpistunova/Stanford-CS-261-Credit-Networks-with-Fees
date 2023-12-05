@@ -96,7 +96,6 @@ def update_graph_capacity_fees(G, path, transaction_amount, fee):
 
     return True
 
-
 def simulate_transactions_fees(G, capacity, num_nodes, epsilon, fee, transaction_amount, window_size, pos=None,
                                visualize=False, visualize_initial=0, visualize_every_n=1000):
     """
@@ -169,6 +168,81 @@ def simulate_transactions_fees(G, capacity, num_nodes, epsilon, fee, transaction
     if visualize:
         visualize_graph(G, total_transactions, fee, capacity, pos, final=True)
     return current_success_rate, avg_path_length
+
+def simulate_transactions_fees_random_transaction_amounts(G, capacity, num_nodes, epsilon, fee, transaction_interval, window_size, pos=None,
+                               visualize=False, visualize_initial=0, visualize_every_n=1000):
+    """
+    Simulates a series of transactions in a credit network, represented as a directed graph, and computes the
+    success rate of these transactions. The success rate is the ratio of successful transactions to the total number
+    of attempted transactions, calculated once the system reaches a steady state.
+
+    Parameters:
+    G (networkx.DiGraph): The graph representing the credit network, where nodes are entities and edges represent
+                          credit lines with a fixed total capacity.
+    num_nodes (int): The total number of nodes (entities) in the graph.
+    epsilon (float): The convergence threshold used to determine if the system has reached a steady state.
+                     A steady state is reached when the success rate changes by less than epsilon between two
+                     consecutive windows of transactions.
+    transaction_interval (tuple of float): The random interval for random transaction amounts. NOTE THIS IS DIFFERENT FROM THE ORIGINAL simulate_transactions_fees
+    fee (float): The PERCENTAGE fee charged per edge traversed in each transaction. NOTE THIS IS DIFFERENT FROM THE ORIGINAL simulate_transactions_fees
+    window_size (int): The number of transactions processed in each iteration.
+    pos (dict, optional): Node positions for visualization purposes (not used in the simulation logic). Defaults to None.
+    snapshot_interval (int): The interval at which to take snapshots of the simulation (not utilized in the current implementation).
+
+    Returns:
+    current_success_rate (float): The success rate of transactions at steady state, defined as the ratio of successful transactions to
+           the total number of attempted transactions.
+
+    Process:
+    - Transactions are simulated by selecting a source (s) and a sink (t) node at random.
+    - For each transaction, the shortest path from s to t is computed. If no path exists, the transaction is marked as failed.
+    - For transactions with an available path, the function checks if each edge along the path can support the transaction
+      amount plus the necessary fees. The fee for an edge depends on its position in the path and the total number of edges (L).
+    - The transaction is successful if all edges in the path have sufficient capacity; otherwise, it is marked as failed.
+    - After a successful transaction, the capacities of the edges along the path are updated to reflect the transaction and fees.
+    - The simulation runs iteratively, processing transactions in windows of 'window_size' until the success rate stabilizes within
+      the epsilon threshold, indicating a steady state.
+    - At steady state, the function returns the overall success probability, calculated as the ratio of successful transactions to
+      the total number of iterations.
+      :param capacity:
+    """
+    total_transactions = 0
+    successful_transactions = 0
+    prev_success_rate = -1
+    total_length_of_paths = 0
+    if visualize:
+        visualize_graph(G, total_transactions, fee, capacity, pos)
+    while True:
+        for _ in range(window_size):
+            # Select a source and sink at random
+            s, t = random.sample(range(num_nodes), 2)
+            try:
+                path = nx.shortest_path(G, s, t)
+                # Direct capacity check
+                if min([G[u][v]['capacity'] for u, v in zip(path, path[1:])]) > 0:
+                    transaction_succeeded = update_graph_capacity_fees(G, path, transaction_amount, fee)
+                    if transaction_succeeded:
+                        successful_transactions += 1
+                        total_length_of_paths += len(path) - 1
+                        if visualize and successful_transactions <= visualize_initial:
+                            visualize_graph(G, total_transactions, fee, capacity, pos, s=s, t=t)
+                        # Subtract 1 to get the number of edges
+
+
+            except nx.NetworkXNoPath:
+                pass
+
+            total_transactions += 1
+
+        current_success_rate = successful_transactions / total_transactions
+        if prev_success_rate != -1 and abs(current_success_rate - prev_success_rate) < epsilon:
+            break
+        prev_success_rate = current_success_rate
+    avg_path_length = total_length_of_paths / successful_transactions if successful_transactions > 0 else 0
+    if visualize:
+        visualize_graph(G, total_transactions, fee, capacity, pos, final=True)
+    return current_success_rate, avg_path_length
+
 def my_draw_networkx_edge_labels(
     G,
     pos,
