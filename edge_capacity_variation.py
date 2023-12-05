@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 # import nx_cugraph as nxcg # Kate, I had to temporarily comment this out becuase I don't have GPUs -Russell
-from transaction_simulator import simulate_transactions_fees, create_random_graph
+from transaction_simulator import *
 import time
 import uuid
 from datetime import datetime
@@ -87,7 +87,7 @@ def simulate_network_capacity_fee_variation_random_transaction_amounts(num_nodes
     num_nodes (int): The number of nodes in the credit network graph.
     capacity_range (iterable): A range or sequence of capacities to be tested in the simulation.
     transaction_interval (tuple of float): The random interval for random transaction amounts. NOTE THIS IS DIFFERENT FROM THE ORIGINAL simulate_network_capacity_fee_variation
-    fee_range (iterable): A sequence of transaction fees to be tested. These fees are percentages of the transaction, so all element values should be between 0 and 1.  NOTE THIS IS DIFFERENT FROM THE ORIGINAL simulate_network_capacity_fee_variation
+    fee_range (iterable): A range or sequence of transaction fees to be tested.
     epsilon (float): The convergence threshold for the success rate to determine the steady state.
     window_size (int): The number of transactions processed in each iteration.
     num_runs (int): The number of simulation runs for each combination of capacity and fee.
@@ -119,7 +119,7 @@ def simulate_network_capacity_fee_variation_random_transaction_amounts(num_nodes
                 G = create_random_graph(num_nodes, avg_degree, capacity)
                 pos = nx.spring_layout(G)
 
-                success_rate, avg_path_length = simulate_transactions_fees(G, capacity, num_nodes, epsilon, fee,
+                success_rate, avg_path_length = simulate_transactions_fees_random_transaction_amounts(G, capacity, num_nodes, epsilon, fee,
                                                                            transaction_interval, window_size, pos)
                 append_results(results, fee, capacity, run, success_rate, avg_path_length)
                 
@@ -134,8 +134,71 @@ def simulate_network_capacity_fee_variation_random_transaction_amounts(num_nodes
         
     return pd.DataFrame(results)
 
+def simulate_network_capacity_fee_variation_random_transaction_amounts_percentage_fees(num_nodes, capacity_range, transaction_interval, percentage_fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing = False, checkpoint_interval = 20):
+    """
+    Simulates a credit network with varying capacities and random transaction fees, computes the success rate of transactions,
+    and optionally saves checkpoints of the simulation results.
+
+    Parameters:
+    num_nodes (int): The number of nodes in the credit network graph.
+    capacity_range (iterable): A range or sequence of capacities to be tested in the simulation.
+    transaction_interval (tuple of float): The random interval for random transaction amounts. NOTE THIS IS DIFFERENT FROM THE ORIGINAL simulate_network_capacity_fee_variation
+    percentage_fee_range (iterable): A sequence of transaction fees to be tested. These fees are percentages of the transaction, so all element values should be between 0 and 1.  NOTE THIS IS DIFFERENT FROM THE ORIGINAL simulate_network_capacity_fee_variation
+    epsilon (float): The convergence threshold for the success rate to determine the steady state.
+    window_size (int): The number of transactions processed in each iteration.
+    num_runs (int): The number of simulation runs for each combination of capacity and fee.
+    avg_degree (float): The average out-degree (number of outgoing edges) for nodes in the graph.
+    checkpointing (bool): Whether to save checkpoints of the results at intervals.
+    checkpoint_interval (int): The interval (in terms of runs) at which to save checkpoints.
+
+    Returns:
+    pandas.DataFrame: A DataFrame containing the results of the simulation with columns for capacities,
+                      runs, success rates, and fees.
+
+    Note:
+    - The function creates a directed graph for each combination of capacity and fee, and for each run,
+      simulating transactions to calculate the success rate.
+    - Checkpoints are saved as pickle files if checkpointing is enabled.
+    """
+    results = {
+        'capacity': [],
+        'run': [],
+        'success_rate': [],
+        'percentage_fee': [],
+        'avg_path_length': []  # New field for average path length
+    }
+    total_execution_time = 0
+    for percentage_fee in percentage_fee_range:
+        start_time = time.time()
+        for capacity in capacity_range:
+            for run in range(num_runs):
+                G = create_random_graph(num_nodes, avg_degree, capacity)
+                pos = nx.spring_layout(G)
+
+                success_rate, avg_path_length = simulate_transactions_fees_random_transaction_amounts_percentage_fees(G, capacity, num_nodes, epsilon, percentage_fee,
+                                                                           transaction_interval, window_size, pos)
+                append_results_percentage_fee(results, percentage_fee, capacity, run, success_rate, avg_path_length)
+                
+                if checkpointing == True and run % checkpoint_interval == 0:
+                    print(f'Completed run {run}/{num_runs}, capacity {capacity}, percentage_fee {percentage_fee}')
+
+        end_time = time.time()
+        execution_time = end_time - start_time
+        total_execution_time += execution_time
+        print_fee_execution_time(percentage_fee, execution_time) # lazy, just used the same function
+        print_estimated_remaining_time(total_execution_time, percentage_fee_range, percentage_fee) # lazy, just used the same function
+        
+    return pd.DataFrame(results)
+
 def append_results(results, fee, capacity, run, success_rate, avg_path_length):
     results['fee'].append(fee)
+    results['capacity'].append(capacity)
+    results['run'].append(run)
+    results['success_rate'].append(success_rate)
+    results['avg_path_length'].append(avg_path_length)
+
+def append_results_percentage_fee(results, percentage_fee, capacity, run, success_rate, avg_path_length):
+    results['percentage_fee'].append(percentage_fee)
     results['capacity'].append(capacity)
     results['run'].append(run)
     results['success_rate'].append(success_rate)
@@ -247,7 +310,8 @@ def russell_run_random_transactions_baseline():
 
     i.e. 'Run an experiment where each transaction amount is always 1, and the fees are always a fixed constant'
     """
-    name = "russell_run_random_transactions_baseline"
+    name = 'russell_run_random_transactions_baseline'
+    print(f"Running experiment {name}")
 
     # Config for the baseline of the varying transaction amount experiment
     num_nodes = 100
@@ -269,12 +333,13 @@ def russell_run_random_transactions_1_2():
     """ Run an experiment where each transaction amount is a random value between [1, 2), and the fees are always a fixed constant
     """
     name = 'russell_run_random_transactions_1_2'
+    print(f"Running experiment {name}")
 
     # Config for the baseline of the varying transaction amount experiment
     num_nodes = 100
     capacity_range = np.arange(1.0, 16, 1)
     capacity_range = np.append(capacity_range, 20)
-    transaction_amount = 1
+    transaction_interval = (1, 2)
     fee_range = list(np.round(np.arange(0.0, 1.01, 0.05), 2))
     epsilon = 0.002
     num_runs = 10
@@ -282,7 +347,51 @@ def russell_run_random_transactions_1_2():
     window_size = 500
 
     # Simulation
-    df = simulate_network_capacity_fee_variation(num_nodes, capacity_range, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing=True)
+    df = simulate_network_capacity_fee_variation_random_transaction_amounts(num_nodes, capacity_range, transaction_interval, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing=True)
+    df.to_pickle(f'{name}.pkl')
+    plot_results_capacity_fee_variation(df, name + generate_filename_timestamp_suffix())
+
+def russell_run_random_transactions_baseline_percentage_fees():
+    """ Run an experiment where each transaction amount is always 1, and the fee is a percentage charged at each edge
+    """
+    name = 'russell_run_random_transactions_baseline_percentage_fees'
+    print(f"Running experiment {name}")
+
+    # Config for the baseline of the varying transaction amount experiment
+    num_nodes = 100
+    capacity_range = np.arange(1.0, 16, 1)
+    capacity_range = np.append(capacity_range, 20)
+    transaction_interval = (1, 1)
+    fee_percentage_range = list(np.round(np.arange(0.0, 1.01, 0.05), 2))
+    epsilon = 0.002
+    num_runs = 10
+    avg_degree = 10
+    window_size = 500
+
+    # Simulation
+    df = simulate_network_capacity_fee_variation_random_transaction_amounts_percentage_fees(num_nodes, capacity_range, transaction_interval, fee_percentage_range, epsilon, window_size, num_runs, avg_degree, checkpointing=True)
+    df.to_pickle(f'{name}.pkl')
+    plot_results_capacity_fee_variation(df, name + generate_filename_timestamp_suffix())
+
+def russell_run_random_transactions_1_2_percentage_fees():
+    """ Run an experiment where each transaction amount is a random value between [1, 2), and the fee is a percentage charged at each edge
+    """
+    name = 'russell_run_random_transactions_1_2_percentage_fees'
+    print(f"Running experiment {name}")
+
+    # Config for the baseline of the varying transaction amount experiment
+    num_nodes = 100
+    capacity_range = np.arange(1.0, 16, 1)
+    capacity_range = np.append(capacity_range, 20)
+    transaction_interval = (1, 2)
+    fee_percentage_range = list(np.round(np.arange(0.0, 1.01, 0.05), 2))
+    epsilon = 0.002
+    num_runs = 10
+    avg_degree = 10
+    window_size = 500
+
+    # Simulation
+    df = simulate_network_capacity_fee_variation_random_transaction_amounts_percentage_fees(num_nodes, capacity_range, transaction_interval, fee_percentage_range, epsilon, window_size, num_runs, avg_degree, checkpointing=True)
     df.to_pickle(f'{name}.pkl')
     plot_results_capacity_fee_variation(df, name + generate_filename_timestamp_suffix())
 
@@ -387,6 +496,9 @@ def kate_run_typical_edge_capacity_variation_experiment():
 
 if __name__ == '__main__':
     print("Hello world!", flush=True)
+    russell_run_random_transactions_baseline()
     russell_run_random_transactions_1_2()
+    russell_run_random_transactions_baseline_percentage_fees()
+    russell_run_random_transactions_1_2_percentage_fees()
     print('------------------', flush=True)
     print('Finished!', flush=True)
