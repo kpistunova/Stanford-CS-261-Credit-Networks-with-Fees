@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib
 from scipy.optimize import curve_fit
 from pyswarm import pso
+from scipy.interpolate import InterpolatedUnivariateSpline
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -154,12 +155,12 @@ epsilon = 0.002
 num_runs = 100
 window_size = 1000
 avg_degree = 10
-# df = pd.read_pickle('3_node_line_len_vs_fee_capacity_denser.pkl')
+df = pd.read_pickle('3_node_line_len_vs_fee_capacity_denser.pkl')
 
 # Simulation
-df = simulate_network_network_size_variation(num_nodes, capacity_range, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing=False, checkpoint_interval = num_runs)
-df.to_pickle('3_node_line_len_vs_fee_capacity_denser.pkl')
-plot_results_network_size_variation(df, '3_node_line_denser')
+# df = simulate_network_network_size_variation(num_nodes, capacity_range, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing=False, checkpoint_interval = num_runs)
+# df.to_pickle('3_node_line_len_vs_fee_capacity_denser.pkl')
+# plot_results_network_size_variation(df, '3_node_line_denser')
 mean_df = df.groupby('capacity')['success_rate'].agg(['mean', 'std']).reset_index()
 print('Done!')
 
@@ -174,9 +175,9 @@ def piecewise_function(x, a11, b11, c11, a33, x11):
     x00 = ((-c11-x11)/(lambertw(expr)) - c11).real
     # Print or log x00 value
     # print("x00 value:", x00)
-    if x00 >= 50 or x00 < 10:
-        # print('x00 is too large')
-        return np.inf
+    # if x00 >= 50 or x00 < 10:
+    #     # print('x00 is too large')
+    #     return np.inf
     # Logarithmic for 1 - 20
     cond1 = (x < x00)
     y[cond1] = a11 + b11 * np.log(x[cond1] + c11)
@@ -199,36 +200,7 @@ def calculate_x00(a11, b11, c11, a33, x11):
     return x00
 def calculate_rmse(y_observed, y_predicted):
     return np.sqrt(np.mean((y_observed - y_predicted)**2))
-# max_retries = 5000000
-# attempt = 0
-# successful_fit = False
-# error_threshold = 0.01
-# while attempt < max_retries and not successful_fit:
-#     if attempt % 10000 == 0:
-#         print(f'attempt {attempt}')
-#     # Randomize initial guesses within a reasonable range
-#     initial_guess = [random.uniform(0, 1), random.uniform(0.01, 0.1), random.uniform(-1, 0),
-#                      random.uniform(0, 2), random.uniform(1000, 3000)]
-#     try:
-#         popt, pcov = curve_fit(piecewise_function, mean_df['capacity'], mean_df['mean'], p0=initial_guess)
-#         x00 = calculate_x00(*popt)
-#         predicted = piecewise_function(mean_df['capacity'], *popt)
-#         rmse_log = calculate_rmse(mean_df['mean'][:7], predicted[:7])
-#         rmse_lin = calculate_rmse(mean_df['mean'][7:21], predicted[7:21])
-#         rmse_const = calculate_rmse(mean_df['mean'][21:], predicted[21:])
-#         rmse = calculate_rmse(mean_df['mean'], predicted)
-#         if rmse_log < error_threshold and rmse < error_threshold and rmse_lin < error_threshold and rmse_const < error_threshold:
-#             successful_fit = True
-#             print(rmse)
-#         else:
-#             attempt += 1
-#     except RuntimeError:
-#         attempt += 1
-#
-# if successful_fit:
-#     print("Fit successful:", popt)
-# else:
-#     print("Failed to fit after", max_retries, "attempts")
+
 def objective_function(params):
     global iteration, start_time
     current_time = time.time()
@@ -239,24 +211,51 @@ def objective_function(params):
     a11, b11, c11, a33, x11 = params
 
     try:
-        popt, pcov = curve_fit(piecewise_function, mean_df['capacity'], mean_df['mean'], p0=[a11, b11, c11, a33, x11])
-        x00 = calculate_x00(*popt)
-        predicted = piecewise_function(mean_df['capacity'], *popt)
-        rmse = calculate_rmse(mean_df['mean'], predicted)
+        # popt, pcov = curve_fit(piecewise_function, mean_df['capacity'], mean_df['mean'], p0=[a11, b11, c11, a33, x11])
+        # x00 = calculate_x00(*popt)
 
-        if predicted is not np.inf:
+        x_values = np.linspace(min(mean_df['capacity']), max(mean_df['capacity']), 1000000)
+        # predicted = piecewise_function(x_values, *popt)
+        predicted = piecewise_function(x_values, *params)
+        spline_interpolator = InterpolatedUnivariateSpline(mean_df['capacity'], mean_df['mean'])
+        interpolated_means = spline_interpolator(x_values)
+        rmse = calculate_rmse(interpolated_means, predicted)
+        # predicted = piecewise_function(mean_df['capacity'], *popt)
+        # rmse = calculate_rmse(mean_df['mean'], predicted)
+        alpha = 10
+        beta = 2
+        gamma = 0.22
+
+        if predicted is not np.inf and np.isnan(predicted).any() == False:
             # Create boolean masks based on capacity values
-            mask_log = mean_df['capacity'] <= 20
-            mask_lin = (mean_df['capacity'] > 20) & (mean_df['capacity'] <= 2000)
-            mask_const = mean_df['capacity'] > 2000
+            # mask_log = mean_df['capacity'] <= 10
+            # mask_lin = (mean_df['capacity'] > 10) & (mean_df['capacity'] <= 2000)
+            # mask_const = mean_df['capacity'] > 2000
+            #
+            # # Use the masks to calculate RMSE for each segment
+            # rmse_log = calculate_rmse(mean_df['mean'][mask_log], predicted[mask_log])
+            # rmse_lin = calculate_rmse(mean_df['mean'][mask_lin], predicted[mask_lin])
+            # rmse_const = calculate_rmse(mean_df['mean'][mask_const], predicted[mask_const])
+            # Create masks based on x_values for each segment
+            mask_log = x_values <= 10
+            mask_lin = (x_values > 10) & (x_values <= 2000)
+            mask_const = x_values > 2000
 
             # Use the masks to calculate RMSE for each segment
-            rmse_log = calculate_rmse(mean_df['mean'][mask_log], predicted[mask_log])
-            rmse_lin = calculate_rmse(mean_df['mean'][mask_lin], predicted[mask_lin])
-            rmse_const = calculate_rmse(mean_df['mean'][mask_const], predicted[mask_const])
-            if rmse_log > 0.019 or rmse_const > 0.0025 or rmse_lin > 0.007:
-                return np.inf
-        return rmse
+            # Note: Make sure 'interpolated_means' and 'y_fitted' are arrays of the same length
+            rmse_log = calculate_rmse(interpolated_means[mask_log], predicted[mask_log])
+            rmse_lin = calculate_rmse(interpolated_means[mask_lin], predicted[mask_lin])
+            rmse_const = calculate_rmse(interpolated_means[mask_const], predicted[mask_const])
+
+            # if rmse_log > 0.0176 or rmse_const > 0.0033 or rmse_lin > 0.007:
+            #     # return np.inf
+            # else:
+            scaled_rmse = alpha * rmse_log + beta * rmse_lin + gamma * rmse_const
+            return scaled_rmse
+
+        else:
+            return np.inf
+
     except RuntimeError:
         return np.inf
 
@@ -276,18 +275,76 @@ iteration = 0
 start_time = time.time()
 
 # Use Particle Swarm Optimization
-xopt, fopt = pso(objective_function, lb, ub, debug = True, swarmsize=200)
+xopt, fopt = pso(objective_function, lb, ub, debug = True, maxiter=200, swarmsize = 200)
 # Initial guess for the parameters
 # initial_guess = [ 0.55131752,  0.04371398, -0.99338461,  0.90358792, 2000]  # Params for constant part and transition points
-# popt, pcov = curve_fit(piecewise_function, mean_df['capacity'], mean_df['mean'], p0=initial_guess)
+popt, pcov = curve_fit(piecewise_function, mean_df['capacity'], mean_df['mean'], p0=xopt)
 # #
+x00 = calculate_x00(*popt)
+print(x00)
+print(popt)
 x_values = np.linspace(min(mean_df['capacity']), max(mean_df['capacity']), 1000000)
-y_fitted = piecewise_function(x_values, *xopt)
+y_fitted = piecewise_function(x_values, *popt)
+fitted_df = pd.DataFrame({
+    'Capacity': x_values,
+    'Success Rate': y_fitted
+})
+cmap = sns.cubehelix_palette(as_cmap=True)
+bg_color = plt.gcf().get_facecolor()
+
+sns.set_theme()
+fig, ax = plt.subplots(figsize=(8 / 1.2, 6 / 1.2), dpi=300)
+# sns.lineplot(data=df_filtered, x='nodes', y='success_rate', hue='fee', marker='o', alpha = 0.9, ci='sd', legend='full')
+sns.lineplot(data=mean_df, x='capacity', y='mean', marker='o', ci='sd', legend='full', label = 'Data')
+sns.lineplot(data=fitted_df, x='Capacity', y='Success Rate', label='Fitted function', color='red', linestyle= 'dashed')
+
+plt.xlabel('Capacity', fontsize=16)
+plt.ylabel('Success Rate', fontsize=16)
+plt.xticks(fontsize=14)
+plt.yticks(fontsize=14)
+
+plt.ylim([-0.01, 1.1])
+# plt.xlim(left=-10)
+plt.xlim([-0.01, 25])
+plt.legend(loc='best')
+
+plt.tight_layout()
+# fig.savefig(f'fitted_function_3_nodes_1_fee_capacity.png', dpi=300, bbox_inches='tight')
+plt.show()
+
 plt.figure(figsize=(10, 6))
 plt.scatter(mean_df['capacity'], mean_df['mean'], label='Data')
 plt.plot(x_values, y_fitted, label='Fitted function', color='red')
 plt.xlabel('Capacity')
 plt.ylabel('Success Rate')
 plt.xlim([-0.01, 25])
+plt.legend()
+plt.show()
+
+plt.figure(figsize=(10, 6))
+plt.scatter(mean_df['capacity'], mean_df['mean'], label='Data')
+plt.plot(x_values, y_fitted, label='Fitted function', color='red')
+plt.xlabel('Capacity')
+plt.ylabel('Success Rate')
+# plt.xlim([-0.01, 25])
+plt.legend()
+plt.show()
+
+predicted = piecewise_function(mean_df['capacity'], *popt)
+plt.figure(figsize=(10, 6))
+plt.scatter(mean_df['capacity'], mean_df['mean'], label='Data')
+plt.plot(mean_df['capacity'], predicted, label='Fitted function', color='red', marker='o')
+plt.xlabel('Capacity')
+plt.ylabel('Success Rate')
+plt.xlim([-0.01, 25])
+plt.legend()
+plt.show()
+
+plt.figure(figsize=(10, 6))
+plt.scatter(mean_df['capacity'], mean_df['mean'], label='Data')
+plt.plot(mean_df['capacity'], predicted, label='Fitted function', color='red', marker='o')
+plt.xlabel('Capacity')
+plt.ylabel('Success Rate')
+# plt.xlim([-0.01, 25])
 plt.legend()
 plt.show()
