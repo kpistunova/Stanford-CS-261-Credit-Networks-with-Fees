@@ -241,10 +241,13 @@ def identify_outliers(df, column,  multiplier=0.8 ):
     upper_bound = Q3 + multiplier * IQR
     return df[(df[column] < lower_bound) | (df[column] > upper_bound)]
 
-def russell_run_baseline_varying_transaction():
+def russell_run_random_transactions_baseline():
     """ The idea for these forthcoming experiments is that we're going to vary transaction amount IN ADDITION TO capacities and fees.
     So this is the baseline configuration for me to compare against.
+
+    i.e. 'Run an experiment where each transaction amount is always 1, and the fees are always a fixed constant'
     """
+    name = "russell_run_random_transactions_baseline"
 
     # Config for the baseline of the varying transaction amount experiment
     num_nodes = 100
@@ -259,9 +262,29 @@ def russell_run_baseline_varying_transaction():
 
     # Simulation
     df = simulate_network_capacity_fee_variation(num_nodes, capacity_range, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing=True)
-    df.to_pickle('russell_run_baseline_varying_transaction.pkl')
-    plot_results_capacity_fee_variation(df, "russell_run_baseline_varying_transaction" + generate_filename_timestamp_suffix())
+    df.to_pickle(f'{name}.pkl')
+    plot_results_capacity_fee_variation(df, name + generate_filename_timestamp_suffix())
 
+def russell_run_random_transactions_1_2():
+    """ Run an experiment where each transaction amount is a random value between [1, 2), and the fees are always a fixed constant
+    """
+    name = 'russell_run_random_transactions_1_2'
+
+    # Config for the baseline of the varying transaction amount experiment
+    num_nodes = 100
+    capacity_range = np.arange(1.0, 16, 1)
+    capacity_range = np.append(capacity_range, 20)
+    transaction_amount = 1
+    fee_range = list(np.round(np.arange(0.0, 1.01, 0.05), 2))
+    epsilon = 0.002
+    num_runs = 10
+    avg_degree = 10
+    window_size = 500
+
+    # Simulation
+    df = simulate_network_capacity_fee_variation(num_nodes, capacity_range, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing=True)
+    df.to_pickle(f'{name}.pkl')
+    plot_results_capacity_fee_variation(df, name + generate_filename_timestamp_suffix())
 
 def kate_run_typical_edge_capacity_variation_experiment():
     """ I've just moved the other "main" code over --Russell
@@ -364,6 +387,6 @@ def kate_run_typical_edge_capacity_variation_experiment():
 
 if __name__ == '__main__':
     print("Hello world!", flush=True)
-    russell_run_baseline_varying_transaction()
+    russell_run_random_transactions_1_2()
     print('------------------', flush=True)
     print('Finished!', flush=True)

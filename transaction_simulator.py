@@ -216,18 +216,19 @@ def simulate_transactions_fees_random_transaction_amounts(G, capacity, num_nodes
         for _ in range(window_size):
             # Select a source and sink at random
             s, t = random.sample(range(num_nodes), 2)
+            transaction_amount = random.uniform(*transaction_interval)
+            # fee_absolute = fee * transaction_amount
             try:
                 path = nx.shortest_path(G, s, t)
                 # Direct capacity check
                 if min([G[u][v]['capacity'] for u, v in zip(path, path[1:])]) > 0:
-                    transaction_succeeded = update_graph_capacity_fees(G, path, transaction_amount, fee)
+                    transaction_succeeded = update_graph_capacity_fees(G, path, transaction_amount, fee) # transaction_succeeded = update_graph_capacity_fees(G, path, transaction_amount, fee_absolute)
                     if transaction_succeeded:
                         successful_transactions += 1
                         total_length_of_paths += len(path) - 1
                         if visualize and successful_transactions <= visualize_initial:
                             visualize_graph(G, total_transactions, fee, capacity, pos, s=s, t=t)
                         # Subtract 1 to get the number of edges
-
 
             except nx.NetworkXNoPath:
                 pass
@@ -447,45 +448,47 @@ def visualize_graph(G, transaction_number, fee, capacity, pos=None, final=False,
     plt.tight_layout()
     plt.show()
     plt.close()
-#
-num_nodes = [5]
-capacity_range = 5
-transaction_amount = 1
-fee = 0.1
-# fee_range = np.round(np.arange(0.0, 1.1, 0.1), 2)
-epsilon = 0.002
-num_runs = 3
-avg_degree = 10
-window_size = 1000
-# num_nodes = [2, 3, 4, 5, 6, 7, 8, 9, 10]
-# # num_nodes = [2, ]
-# capacity_range = [2, 3, 4, 5, 8, 10, 15, 20, 30]
-# transaction_amount = 1
-# fee_range = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-results = {
-    'node': [],
-    'success_rate': [],
-    'run': []
-}
-for node in num_nodes:
-    print(f'started node {node}')
-    for run in range(num_runs):
-        G = create_random_graph(node, avg_degree, capacity_range, 'line')
-        pos = nx.spring_layout(G)
-        # pos = nx.circular_layout(G)
-        success_rate, avg_path_length = simulate_transactions_fees(G, capacity_range , node, epsilon, fee, transaction_amount,
-                                                               window_size, pos, visualize=True, visualize_initial = 5)
-        results['node'].append(node)
-        results['success_rate'].append(success_rate)
-        results['run'].append(run)
 
-result=pd.DataFrame(results)
-sns.set_theme()  # Apply the default theme
-plt.figure(figsize=(10, 6))
-plt.ylim([0.0, 1.1])
-sns.lineplot(x='node', y='success_rate', data=result, marker ='o')  # Creates a scatter plot
-plt.show()
+if __name__ == '__main__':
+    #
+    num_nodes = [5]
+    capacity_range = 5
+    transaction_amount = 1
+    fee = 0.1
+    # fee_range = np.round(np.arange(0.0, 1.1, 0.1), 2)
+    epsilon = 0.002
+    num_runs = 3
+    avg_degree = 10
+    window_size = 1000
+    # num_nodes = [2, 3, 4, 5, 6, 7, 8, 9, 10]
+    # # num_nodes = [2, ]
+    # capacity_range = [2, 3, 4, 5, 8, 10, 15, 20, 30]
+    # transaction_amount = 1
+    # fee_range = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+    results = {
+        'node': [],
+        'success_rate': [],
+        'run': []
+    }
+    for node in num_nodes:
+        print(f'started node {node}')
+        for run in range(num_runs):
+            G = create_random_graph(node, avg_degree, capacity_range, 'line')
+            pos = nx.spring_layout(G)
+            # pos = nx.circular_layout(G)
+            success_rate, avg_path_length = simulate_transactions_fees(G, capacity_range , node, epsilon, fee, transaction_amount,
+                                                                window_size, pos, visualize=True, visualize_initial = 5)
+            results['node'].append(node)
+            results['success_rate'].append(success_rate)
+            results['run'].append(run)
 
-print(f'success rate is {success_rate}')
-print(f'Average path is {avg_path_length}')
+    result=pd.DataFrame(results)
+    sns.set_theme()  # Apply the default theme
+    plt.figure(figsize=(10, 6))
+    plt.ylim([0.0, 1.1])
+    sns.lineplot(x='node', y='success_rate', data=result, marker ='o')  # Creates a scatter plot
+    plt.show()
+
+    print(f'success rate is {success_rate}')
+    print(f'Average path is {avg_path_length}')
 
