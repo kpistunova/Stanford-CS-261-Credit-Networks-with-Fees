@@ -9,7 +9,7 @@ import pandas as pd
 from transaction_simulator import simulate_transactions_fees, create_random_graph
 import time
 
-def simulate_network_network_size_variation(num_nodes, capacity_range, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing = False, checkpoint_interval = 20):
+def simulate_network_network_size_variation(cn, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing = False, checkpoint_interval = 20):
     """
     Simulates a credit network with varying capacities and transaction fees, computes the success rate of transactions,
     and optionally saves checkpoints of the simulation results.
@@ -46,34 +46,35 @@ def simulate_network_network_size_variation(num_nodes, capacity_range, transacti
     total_execution_time = 0
     for fee in fee_range:
         start_time = time.time()
-        for capacity in capacity_range:
-            for node in num_nodes:
-                for run in range(num_runs):
-                    # if run == 1:
-                    #     visualize = True
-                    # else:
-                    #     visualize = False
-                    G = create_random_graph(node, avg_degree, capacity, 'cycle')
-                    pos = nx.spring_layout(G)
-                    success_rate, avg_path_length = simulate_transactions_fees(G, capacity, node, epsilon, fee,
-                                                                               transaction_amount, window_size, pos, visualize=False
-                                                                               )
-                    # print(f'Completed run {run}/{num_runs}, degree {degree}, fee {fee}')
+        for l in cn:
+            capacity = l[0]
+            node = l[1]
+            for run in range(num_runs):
+            # if run == 1:
+            #     visualize = True
+            # else:
+            #     visualize = False
+                G = create_random_graph(node, avg_degree, capacity, 'cycle')
+                pos = nx.spring_layout(G)
+                success_rate, avg_path_length = simulate_transactions_fees(G, capacity, node, epsilon, fee,
+                                                                           transaction_amount, window_size, pos, visualize=False
+                                                                           )
+                # print(f'Completed run {run}/{num_runs}, degree {degree}, fee {fee}')
 
-                    results['nodes'].append(node)
-                    results['run'].append(run)
-                    results['success_rate'].append(success_rate)
-                    results['fee'].append(fee)
-                    results['capacity'].append(capacity)
-                    results['avg_path_length'].append(avg_path_length)
-                    if run % checkpoint_interval == 0:
-                        print(f'Completed run {run}/{num_runs}, node {node}, capacity {capacity}, fee {fee}')
+                results['nodes'].append(node)
+                results['run'].append(run)
+                results['success_rate'].append(success_rate)
+                results['fee'].append(fee)
+                results['capacity'].append(capacity)
+                results['avg_path_length'].append(avg_path_length)
+                if run % checkpoint_interval == 0:
+                    print(f'Completed run {run}/{num_runs}, node {node}, capacity {capacity}, fee {fee}')
 
-                    if checkpointing == True and run % checkpoint_interval == 0:
-                        checkpoint_df = pd.DataFrame(results)
-                        checkpoint_filename = f'checkpoint_capacity_fixed_{capacity}_fee_{fee}_run_{run}_node_{node}.pkl'
-                        checkpoint_df.to_pickle(checkpoint_filename)
-                        # print(f'Saved checkpoint to {checkpoint_filename}')
+                if checkpointing == True and run % checkpoint_interval == 0:
+                    checkpoint_df = pd.DataFrame(results)
+                    checkpoint_filename = f'checkpoint_capacity_fixed_{capacity}_fee_{fee}_run_{run}_node_{node}.pkl'
+                    checkpoint_df.to_pickle(checkpoint_filename)
+                    # print(f'Saved checkpoint to {checkpoint_filename}')
         end_time = time.time()
         execution_time = end_time - start_time
         total_execution_time += execution_time
@@ -200,25 +201,24 @@ cn = find_closest_ratios(scale)
 transaction_amount = 1
 fee_range = [0.0]
 epsilon = 0.002
-num_runs = 5
+num_runs = 3
 avg_degree = 10
 window_size = 1000
 
-df = pd.read_pickle('cycle_len_vs_fee_0_capacity_after_fix.pkl')
+df = pd.read_pickle('cycle_len_vs_fee_0_cn_after_fix.pkl')
 # df_filtered = df[df['fee'] != 0.0]
 
 # for capacity in df_filtered['capacity'].unique():
 #     plot_results_network_size_variation(df_filtered, capacity)
 # Simulation
-df = simulate_network_network_size_variation(num_nodes, capacity_range, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing=False, checkpoint_interval=num_runs)
-df.to_pickle('cycle_len_vs_fee_0_capacity_after_fix.pkl')
+df = simulate_network_network_size_variation(cn, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing=False, checkpoint_interval=num_runs)
+df.to_pickle('cycle_len_vs_fee_0_cn_after_fix.pkl')
 
 
-cn = find_closest_ratios(scale)
 
 # # Plotting
-for capacity in df['capacity'].unique():
-    plot_results_network_size_variation(df, capacity)
+# for capacity in df['capacity'].unique():
+#     plot_results_network_size_variation(df, capacity)
 
 
 

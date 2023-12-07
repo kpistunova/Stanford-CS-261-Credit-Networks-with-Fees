@@ -6,9 +6,11 @@ import pandas as pd
 import nx_cugraph as nxcg
 from transaction_simulator import simulate_transactions_fees, create_random_graph
 import time
-
+import matplotlib
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import StandardScaler
+import matplotlib.lines as mlines
+
 def simulate_network_network_size_variation(num_nodes, capacity_range, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing = False, checkpoint_interval = 20):
     """
     Simulates a credit network with varying capacities and transaction fees, computes the success rate of transactions,
@@ -69,13 +71,13 @@ def simulate_network_network_size_variation(num_nodes, capacity_range, transacti
                         checkpoint_filename = f'checkpoint_capacity_fixed_{capacity}_fee_{fee}_run_{run}_node_{node}.pkl'
                         checkpoint_df.to_pickle(checkpoint_filename)
                         # print(f'Saved checkpoint to {checkpoint_filename}')
-            end_time = time.time()
-            execution_time = end_time - start_time
-            total_execution_time += execution_time
-            remaining_fees = len(fee_range) - (fee_range.index(fee) + 1)
-            estimated_remaining_time = remaining_fees * (total_execution_time / (fee_range.index(fee) + 1))
-            print(f"Processed fee {fee} in time {execution_time} seconds")
-            print(f"Estimated remaining time: {estimated_remaining_time / 60} minutes\n")
+        end_time = time.time()
+        execution_time = end_time - start_time
+        total_execution_time += execution_time
+        remaining_fees = len(fee_range) - (fee_range.index(fee) + 1)
+        estimated_remaining_time = remaining_fees * (total_execution_time / (fee_range.index(fee) + 1))
+        print(f"Processed fee {fee} in time {execution_time} seconds")
+        print(f"Estimated remaining time: {estimated_remaining_time / 60} minutes\n")
     return pd.DataFrame(results)
 
 def plot_results_network_size_variation(df, capacity):
@@ -115,7 +117,7 @@ def plot_results_network_size_variation(df, capacity):
     plt.xlim(left=0)
 
     plt.tight_layout()
-    fig.savefig(f'network_size_var_capacity_{capacity}.png', dpi=300, bbox_inches='tight')
+    fig.savefig(f'network_size_var_capacity_after_fix_{capacity}.png', dpi=300, bbox_inches='tight')
     plt.show()
 
     fig, ax = plt.subplots(figsize=(8 / 1.2, 6 / 1.2), dpi=300)
@@ -143,7 +145,7 @@ def plot_results_network_size_variation(df, capacity):
     plt.xlim(left=0.9)
     # Save the figure with tight layout
     plt.tight_layout()
-    fig.savefig(f'network_size_var_capacity_path_lenght_{capacity}.png', dpi=300, bbox_inches='tight')
+    fig.savefig(f'network_size_var_capacity_path_lenght_after_fix_{capacity}.png', dpi=300, bbox_inches='tight')
     # Display the plot
     plt.show()
     # Heatmap
@@ -160,7 +162,7 @@ def plot_results_network_size_variation(df, capacity):
 
 # Configuration
 num_nodes = [25, 30, 50, 80, 100, 200, 300, 500, 1000]
-capacity_range = [2, 3, 4, 5, 8, 10, 15, 20, 30]
+capacity_range = [2, 4, 8, 15, 20, 30]
 transaction_amount = 1
 fee_range = [0, 0.1, 0.4, 0.8, 1]
 epsilon = 0.002
@@ -168,13 +170,100 @@ num_runs = 20
 avg_degree = 10
 window_size = 1000
 
-df = pd.read_pickle('network_size_capacity_all.pkl')
+df = pd.read_pickle('network_size_capacity_all_after_fix.pkl')
+
+# Simulation
+df = simulate_network_network_size_variation(num_nodes, capacity_range, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing=False, checkpoint_interval=num_runs)
+df.to_pickle('network_size_capacity_all_after_fix.pkl')
 for capacity in df['capacity'].unique():
     plot_results_network_size_variation(df, capacity)
-# Simulation
-df = simulate_network_network_size_variation(num_nodes, capacity_range, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing=True)
-df.to_pickle('network_size_capacity_all.pkl')
 #
 # # Plotting
-plot_results_network_size_variation(df)
+# plot_results_network_size_variation(df)
 
+# Filter the DataFrame to include only the desired fees
+selected_fees = [0.0, 1]
+df_filtered = df[df['fee'].isin(selected_fees)]
+
+# Now create the plot with the filtered DataFrame
+sns.set_theme()
+fig, ax = plt.subplots(figsize=(8 / 1.2, 6 / 1.2), dpi=300)
+
+# Define line styles for the fees
+line_styles = {0: 'dotted', 1: 'solid'}  # (solid line for 0.3, dashed line for 0)
+marker_styles = {0: None, 1: 'o'}
+linewidth= {0: 2, 1: 1.5}
+for fee in df_filtered['fee'].unique():
+    subset = df_filtered[df_filtered['fee'] == fee]
+    alpha_value = 1 if fee == 0 else 0.8
+    ci = None if fee == 0 else 'sd'
+    sns.lineplot(data=subset, x='nodes', y='avg_path_length', hue='capacity',
+                 palette='coolwarm', hue_norm=matplotlib.colors.LogNorm(),
+                 linestyle=line_styles[fee], marker=marker_styles[fee], linewidth=linewidth[fee],
+                 alpha=alpha_value, ci=ci, ax=ax, markersize=6)
+
+plt.xlabel('Node Number', fontsize=16)
+plt.ylabel('Average Path Length', fontsize=16)
+plt.xticks(fontsize=14)
+plt.yticks(fontsize=14)
+
+handles, labels = ax.get_legend_handles_labels()
+
+# Create custom handles for the legend
+capacity_handles = [mlines.Line2D([], [], color=palette[i], linestyle='-', marker='') for i in range(len(df_filtered['capacity'].unique()))]
+fee_handles = [mlines.Line2D([], [], color='black', linestyle=line_styles[fee], marker=marker_styles[fee]) for fee in selected_fees]
+
+# Combine custom handles
+custom_handles = capacity_handles + fee_handles
+
+# Define custom labels for the legend
+capacity_labels = [f'Capacity {label}' for label in df_filtered['capacity'].unique()]
+fee_labels = [f'Fee {fee}' for fee in selected_fees]
+custom_labels = capacity_labels + fee_labels
+
+# Create the custom legend
+legend = ax.legend(handles=custom_handles, labels=custom_labels, title='Legend', loc='best', ncol=2, fontsize='x-small', title_fontsize='small')
+
+plt.tight_layout()
+fig.savefig('average_path_length_vs_node_number_after_fix_fee_1.png', dpi=300)
+plt.show()
+
+
+
+fig, ax = plt.subplots(figsize=(8 / 1.2, 6 / 1.2), dpi=300)
+# Define line styles for the fees
+
+for fee in df_filtered['fee'].unique():
+    subset = df_filtered[df_filtered['fee'] == fee]
+    alpha_value = 1 if fee == 0 else 0.8
+    ci = None if fee == 0 else 'sd'
+    sns.lineplot(data=subset, x='nodes', y='success_rate', hue='capacity',
+                 palette='coolwarm', hue_norm=matplotlib.colors.LogNorm(),
+                 linestyle=line_styles[fee], marker=marker_styles[fee], linewidth=linewidth[fee],
+                 alpha=alpha_value, ci=ci, ax=ax, markersize=6)
+
+plt.xlabel('Node Number', fontsize=16)
+plt.ylabel('Success Rate', fontsize=16)
+plt.xticks(fontsize=14)
+plt.yticks(fontsize=14)
+
+handles, labels = ax.get_legend_handles_labels()
+
+# Create custom handles for the legend
+capacity_handles = [mlines.Line2D([], [], color=palette[i], linestyle='-', marker='') for i in range(len(df_filtered['capacity'].unique()))]
+fee_handles = [mlines.Line2D([], [], color='black', linestyle=line_styles[fee], marker=marker_styles[fee]) for fee in selected_fees]
+
+# Combine custom handles
+custom_handles = capacity_handles + fee_handles
+
+# Define custom labels for the legend
+capacity_labels = [f'Capacity {label}' for label in df_filtered['capacity'].unique()]
+fee_labels = [f'Fee {fee}' for fee in selected_fees]
+custom_labels = capacity_labels + fee_labels
+
+# Create the custom legend
+legend = ax.legend(handles=custom_handles, labels=custom_labels, title='Legend', loc='best', ncol=2, fontsize='x-small', title_fontsize='small')
+
+plt.tight_layout()
+fig.savefig('success_rate_vs_node_number_after_fix_fee_1.png', dpi=300)
+plt.show()

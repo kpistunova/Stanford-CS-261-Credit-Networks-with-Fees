@@ -121,7 +121,7 @@ def plot_results_network_size_variation(df, name, size = (8 / 1.2, 6 / 1.2)):
     # Calculate the y-ticks based on the data range and set them to only show one decimal place
     # min_y, max_y = df['avg_path_length'].min(), df['avg_path_length'].max()
     min_y = 1.0
-    max_y = 1.328782086291644
+    max_y = 1.42
     y_ticks = np.arange(np.floor(min_y * 10) / 10, np.ceil(max_y * 10) / 10, 0.1)
     plt.yticks(y_ticks, [f'{tick:.1f}' for tick in y_ticks])
     # Improve the legibility of the plot
@@ -135,7 +135,7 @@ def plot_results_network_size_variation(df, name, size = (8 / 1.2, 6 / 1.2)):
     # ax.xaxis.labelpad = 15
     # ax.yaxis.labelpad = 15
     # Adjust legend
-    plt.ylim(top=1.32)
+    plt.ylim(top=1.42)
     # Set the limits appropriately
 
     # Save the figure with tight layout
@@ -150,17 +150,22 @@ def plot_results_network_size_variation(df, name, size = (8 / 1.2, 6 / 1.2)):
 num_nodes = 3
 capacity_range = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 35, 40, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000, 2100, 2200, 2300, 2400, 2500, 3000, 3500, 4000, 5000]
 transaction_amount = 1
-fee_range = 1
+fee_range = 0.0
 epsilon = 0.002
-num_runs = 100
+num_runs = 10
 window_size = 1000
 avg_degree = 10
-df = pd.read_pickle('3_node_line_len_vs_fee_capacity_denser.pkl')
+df1 = pd.read_pickle('3_node_line_len_vs_fee_capacity_denser.pkl')
+df0 = pd.read_pickle('3_node_0_fee_line_len_vs_fee_capacity_denser.pkl')
+df1['fee'] = 1.0
+df0['fee'] = 0.0
+df = pd.concat([df0, df1], ignore_index=True)
 
 # Simulation
 # df = simulate_network_network_size_variation(num_nodes, capacity_range, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing=False, checkpoint_interval = num_runs)
-# df.to_pickle('3_node_line_len_vs_fee_capacity_denser.pkl')
-# plot_results_network_size_variation(df, '3_node_line_denser')
+# df.to_pickle('3_node_0_fee_line_len_vs_fee_capacity_denser.pkl')
+plot_results_network_size_variation(df, '3_node_0_fee_line_denser')
+
 mean_df = df.groupby('capacity')['success_rate'].agg(['mean', 'std']).reset_index()
 print('Done!')
 
@@ -267,9 +272,10 @@ def objective_function_wrapper(params):
 
 
 # Set the bounds for the parameters in your function
-lb = [0.4, 0.01, -1.1, 0.85, 1000]
-ub = [0.6, 0.1, -0.8, 0.94, 3000]
-
+# lb = [0.4, 0.01, -1.1, 0.85, 1000]
+# ub = [0.6, 0.1, -0.8, 0.94, 3000]
+lb = [0.53, 5.6e-2, -9.9e-1, 0.87, 1600]
+ub = [0.55, 6.1e-2, -9.7e-1, 0.91, 1800]
 global iteration, start_time
 iteration = 0
 start_time = time.time()
@@ -278,13 +284,15 @@ start_time = time.time()
 xopt, fopt = pso(objective_function, lb, ub, debug = True, maxiter=200, swarmsize = 200)
 # Initial guess for the parameters
 # initial_guess = [ 0.55131752,  0.04371398, -0.99338461,  0.90358792, 2000]  # Params for constant part and transition points
-popt, pcov = curve_fit(piecewise_function, mean_df['capacity'], mean_df['mean'], p0=xopt)
+# popt, pcov = curve_fit(piecewise_function, mean_df['capacity'], mean_df['mean'], p0=xopt)
 # #
-x00 = calculate_x00(*popt)
+# popt = [ 5.48458590e-01 , 5.75446022e-02 ,-9.76419302e-01 , 8.96383665e-01,
+#   1.77790866e+03]
+x00 = calculate_x00(*xopt)
 print(x00)
-print(popt)
+print(xopt)
 x_values = np.linspace(min(mean_df['capacity']), max(mean_df['capacity']), 1000000)
-y_fitted = piecewise_function(x_values, *popt)
+y_fitted = piecewise_function(x_values, *xopt)
 fitted_df = pd.DataFrame({
     'Capacity': x_values,
     'Success Rate': y_fitted
@@ -330,7 +338,7 @@ plt.ylabel('Success Rate')
 plt.legend()
 plt.show()
 
-predicted = piecewise_function(mean_df['capacity'], *popt)
+predicted = piecewise_function(mean_df['capacity'], *xopt)
 plt.figure(figsize=(10, 6))
 plt.scatter(mean_df['capacity'], mean_df['mean'], label='Data')
 plt.plot(mean_df['capacity'], predicted, label='Fitted function', color='red', marker='o')
@@ -348,3 +356,4 @@ plt.ylabel('Success Rate')
 # plt.xlim([-0.01, 25])
 plt.legend()
 plt.show()
+print('done!')
