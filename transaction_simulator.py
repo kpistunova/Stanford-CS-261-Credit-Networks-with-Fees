@@ -3,10 +3,22 @@ import random
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
-import nx_cugraph as nxcg
-import cugraph
+import matplotlib.cm as cm
+from matplotlib.patches import FancyArrowPatch
+from mpl_toolkits.mplot3d import art3d
+from mpl_toolkits.mplot3d import Axes3D, art3d
+from mpl_toolkits.mplot3d import proj3d
+from mpl_toolkits.mplot3d.proj3d import proj_transform
+from mpl_toolkits.mplot3d.art3d import Patch3D
+from scipy.spatial.transform import Rotation as R
+from matplotlib.colors import Normalize
+from matplotlib.collections import LineCollection
+from matplotlib.colors import ListedColormap, BoundaryNorm
+from mpl_toolkits.mplot3d.art3d import Line3DCollection
+import matplotlib.colors as mcolors
+from mpl_toolkits.mplot3d.art3d import Line3DCollection
+
 import numpy as np
-import cudf
 def create_random_graph(num_nodes, avg_degree, fixed_total_capacity, type = 'random'):
     """
     Creates a random directed graph with a specified average degree and fixed total capacity for each edge.
@@ -52,8 +64,15 @@ def create_random_graph(num_nodes, avg_degree, fixed_total_capacity, type = 'ran
             for v in range(num_nodes):
                 if u != v and not G.has_edge(v, u):
                     G.add_edge(u, v, capacity=fixed_total_capacity)
+    elif type == 'star':
+        # Add edges to the graph to form a star
+        for i in range(1, num_nodes):
+            # Connect each node to the central node (node 0)
+            G.add_edge(0, i, capacity=fixed_total_capacity)
+            # Uncomment the following line to make it bidirectional
+            # G.add_edge(i, 0, capacity=fixed_total_capacity)
     else:
-        raise ValueError("Invalid graph type. Please choose 'random', 'line', or 'cycle'.")
+        raise ValueError("Invalid graph type. Please choose 'random', 'line', 'cycle', 'complete', or 'star'.")
 
     return G
 
@@ -350,7 +369,7 @@ def my_draw_networkx_edge_labels(
 
     return text_items
 
-def visualize_graph(G, transaction_number, succesfull_transactions, fee, capacity, pos=None, final=False, s=None, t=None, fail = False, no_path = False):
+def visualize_graph(G, transaction_number, succesfull_transactions, fee, capacity, pos=None, final=False, s=None, t=None, fail = False, no_path = False, anot = True):
     if pos is None:
         pos = nx.spring_layout(G)
 
@@ -371,11 +390,13 @@ def visualize_graph(G, transaction_number, succesfull_transactions, fee, capacit
     arc_rad = 0.25
     nx.draw_networkx_edges(G, pos, ax=ax, edgelist=curved_edges, connectionstyle=f'arc3, rad = {arc_rad}')
 
-    edge_weights = nx.get_edge_attributes(G, 'capacity')
-    curved_edge_labels = {edge: edge_weights[edge] for edge in curved_edges}
-    straight_edge_labels = {edge: edge_weights[edge] for edge in straight_edges}
-    my_draw_networkx_edge_labels(G, pos, ax=ax, edge_labels=curved_edge_labels, rotate=False, rad=arc_rad)
-    nx.draw_networkx_edge_labels(G, pos, ax=ax, edge_labels=straight_edge_labels, rotate=False)
+    if anot:
+        edge_weights = nx.get_edge_attributes(G, 'capacity')
+        curved_edge_labels = {edge: edge_weights[edge] for edge in curved_edges}
+        straight_edge_labels = {edge: edge_weights[edge] for edge in straight_edges}
+        my_draw_networkx_edge_labels(G, pos, ax=ax, edge_labels=curved_edge_labels, rotate=False, rad=arc_rad)
+        nx.draw_networkx_edge_labels(G, pos, ax=ax, edge_labels=straight_edge_labels, rotate=False)
+
     if final:
         ax.set_title(f'Steady state, after {transaction_number} transactions, {succesfull_transactions} successful, f = {fee}, c = {capacity}', fontsize=14)
         plt.title(f'Steady state, after {transaction_number} transactions, {succesfull_transactions} successful, f = {fee}, c = {capacity}', fontsize=14)
@@ -455,63 +476,159 @@ def visualize_graph(G, transaction_number, succesfull_transactions, fee, capacit
 # The graph to visualize
 
 
+# rotAngles is a tuple of rotation angles about each axis in degrees
+class Arrow3D(FancyArrowPatch):
+    def __init__(self, xs, ys, zs, node_radius=0.0027, *args, **kwargs):
+        super().__init__((0, 0), (0, 0), *args, **kwargs)
+        self._verts3d = xs, ys, zs
+        self.node_radius = node_radius  # Radius of the node sphere
 
-#-----
+    def do_3d_projection(self, renderer=None):
+        xs3d, ys3d, zs3d = self._verts3d
+        xs, ys, zs = proj3d.proj_transform(xs3d, ys3d, zs3d, self.axes.M)
+        if len(xs) == 1:
+            # Return an early depth value (e.g., the z-coordinate)
+            return zs[0]
+        # Calculate the direction vector from start to end point
+        direction = np.array([xs[1] - xs[0], ys[1] - ys[0], zs[1] - zs[0]])
+        length = np.linalg.norm(direction)
 
+        direction /= length
+
+        # Subtract the node radius from the arrow's length
+        # to get the new endpoint that stops at the node's surface
+        xs[1] -= direction[0] * self.node_radius
+        ys[1] -= direction[1] * self.node_radius
+        zs[1] -= direction[2] * self.node_radius
+
+        # arrow_start_point = end_point - direction * node_radius * 32
+        xs[0] = xs[1] - direction[0] * (self.node_radius)*4
+        ys[0] = ys[1] - direction[1] * (self.node_radius )*4
+        zs[0] = zs[1] - direction[2] * (self.node_radius )*4
+
+        self.set_positions((xs[0], ys[0]), (xs[1], ys[1]))
+
+        return np.min(zs)
+
+
+# Function to draw an arrow with varying opacity based on its length
+# Function to draw an arrow with varying opacity based on its length
+def draw_gradient_arrow(ax, start_point, end_point, node_radius, cmap, minz, maxz, lww):
+    # Calculate the direction vector from start to end point
+    direction = np.array(end_point) - np.array(start_point)
+    length = np.linalg.norm(direction)
+
+    if length > 0:  # Only perform the division if the length is non-zero
+        direction /= length
+
+        # Subtract the node radius from the arrow's length to get the new endpoint
+        # that stops at the node's surface, and add it to the start point
+        # end_point -= direction * node_radius
+        # start_point += direction * node_radius
+
+    num_points = 100
+    ee = end_point - direction * node_radius*30
+    ss = start_point + direction * node_radius*20
+    x = np.linspace(ss[0], ee[0], num_points)
+    y = np.linspace(ss[1], ee[1], num_points)
+    z = np.linspace(ss[2], ee[2], num_points)
+
+    # Normalize the colors along the line based on the z-coordinates
+    norm = Normalize(vmin=minz, vmax=maxz)
+    colors = [cmap(norm(zi)) for zi in z]
+    segments = [np.array([[x[i], y[i], z[i]], [x[i+1], y[i+1], z[i+1]]]) for i in range(num_points - 1)]
+    lc = Line3DCollection(segments, colors=colors, linewidth=lww, alpha = 0.9)
+    ax.add_collection3d(lc)
+    lc.set_zorder(1)
+
+
+    # if length > node_radius:
+    #     arrow_start_point = end_point - direction * node_radius*32
+    #     arrow_end_point = end_point - direction * node_radius*33
+    #     arrow = Arrow3D([arrow_start_point[0], arrow_end_point[0]], [arrow_start_point[1], arrow_end_point[1]], [arrow_start_point[2], arrow_end_point[2]],
+    #                     mutation_scale=20, lw=1, arrowstyle="-|>", color=cmap(norm(end_point[2])),  edgecolor='black')
+    #     ax.add_artist(arrow)
+    #     arrow.set_zorder(10000)
 #----------
-def plot_3d(G):
+def plot_3d(G, ccc = False):
     sns.set_style()
+    if G.number_of_nodes() > 16:
+        lww = 1
+    elif G.number_of_nodes() > 8:
+        lww =2
+    else:
+        lww = 3
 
-    # Generate the 2D layout
-    pos_2d = nx.spring_layout(G)
+    if G.number_of_nodes() > 20:
+        figsize = (12*1.5, 9*1.5)
+    else:
+        figsize = (12, 9)
+    pos_3dd = nx.spring_layout(G, dim=3, seed=779)
+    node_0_pos = pos_3dd[0]
+    translation_vector = -np.array(node_0_pos)
 
-    # Create 3D positions by adding a z-coordinate
-    # Here, we simply add a z-coordinate of 0, but you can add any logic for the z-coordinate
-    pos_3d = nx.spring_layout(G, dim=3, seed=779)
+    # Translate all nodes
+    pos_3d = {node: pos + translation_vector for node, pos in pos_3dd.items()}
 
-# Now let's visualize the graph in 3D
-    fig, ax = plt.subplots(figsize=(12, 9), dpi=300 ,  constrained_layout=True, subplot_kw={'projection': '3d'},
+    # Now let's visualize the graph in 3D
+    fig, ax = plt.subplots(figsize=figsize, dpi=300 ,  constrained_layout=True, subplot_kw={'projection': '3d'},
                            gridspec_kw=dict(top=1.07, bottom=0.02, left=0, right=1))
-    # fig = plt.figure(figsize=(12*1.3, 9*1.3), dpi=300 ,  constrained_layout=True)
-    # ax = fig.add_subplot(111, projection='3d')
     fig.patch.set_facecolor('white')  # Set the figure background to white
     ax.set_facecolor('white')  # Set the axes background to white
 
-    # Plot the nodes - the size and color should match your 2D graph
-    # Plot the nodes - increasing the node size for better visibility
+    cmap = plt.get_cmap('coolwarm')
+    # Get the range of z-coordinates
+    z_values = [pos[2] for pos in pos_3d.values()]
+    edge_lengths = [np.linalg.norm(np.array(pos_3d[v]) - np.array(pos_3d[u])) for u, v in G.edges()]
 
-    for node, (x, y, z) in pos_3d.items():
-        ax.scatter(x, y, z, s=400, c="skyblue", edgecolors="black", depthshade=True, alpha = 0.9)
-        # Annotate the nodes
-        ax.text(x, y, z, str(node), color='black', size=16, ha='center', va='center', zorder=1000)
+    min_z, max_z = min(z_values), max(z_values)
 
+    # Normalize z-coordinates for colormap
+    norm = plt.Normalize(min_z, max_z)
 
-
-    # Draw the edges
-    # Plot the edges - adjust linewidth to match your 2D graph
+    minz = min(pos_3d.values(), key=lambda x: x[2])[2]  # min z-value from your nodes
+    maxz = max(pos_3d.values(), key=lambda x: x[2])[2]
+    # Draw edges first
     for u, v in G.edges():
+        draw_gradient_arrow(ax, pos_3d[u], pos_3d[v], node_radius=0.0027, cmap=cmap, minz=minz, maxz=maxz, lww=lww)
+
+    # Then draw arrows
+    for u, v in G.edges():
+        cc = cmap(norm(pos_3d[v][2]))
         x = np.array((pos_3d[u][0], pos_3d[v][0]))
         y = np.array((pos_3d[u][1], pos_3d[v][1]))
         z = np.array((pos_3d[u][2], pos_3d[v][2]))
-        ax.plot(x, y, z, color="black", linewidth=1, alpha = 0.8)
+        arrow = Arrow3D(x, y, z, mutation_scale=30, lw=lww, arrowstyle="-|>", color=cc)
+        ax.add_artist(arrow)
+        arrow.set_zorder(100000)  # Attempt to put arrows on top
     ax.auto_scale_xyz([pos_3d[v][0] for v in sorted(G)], [pos_3d[v][1] for v in sorted(G)], [pos_3d[v][2] for v in sorted(G)])
 
     # Add edge labels - adjust font size and color to match your 2D graph
-    for (u, v), label in nx.get_edge_attributes(G, 'capacity').items():
-        x_mid = (pos_3d[u][0] + pos_3d[v][0]) / 2
-        y_mid = (pos_3d[u][1] + pos_3d[v][1]) / 2
-        z_mid = (pos_3d[u][2] + pos_3d[v][2]) / 2
-        ax.text(x_mid, y_mid, z_mid, str(label), size=16, color='black', ha='center', va='center',
-                bbox=dict(facecolor=(0.95, 0.95, 0.95), edgecolor='none', pad=1))
+    if ccc:
+        for (u, v), label in nx.get_edge_attributes(G, 'capacity').items():
+            x_mid = (pos_3d[u][0] + pos_3d[v][0]) / 2
+            y_mid = (pos_3d[u][1] + pos_3d[v][1]) / 2
+            z_mid = (pos_3d[u][2] + pos_3d[v][2]) / 2
+            ax.text(x_mid, y_mid, z_mid, str(label), size=16, color='black', ha='center', va='center',
+                    bbox=dict(facecolor=(0.95, 0.95, 0.95), edgecolor='none', pad=1), zorder = 6000)
+    # Plot the nodes with color based on z-coordinate
+    for node, (x, y, z) in pos_3d.items():
+        if node == 0:
+            zzz = 200000
+        else:
+            zzz = 200000
+        color = cmap(norm(z))
+        ax.scatter(x, y, z, s=400, color=color, edgecolors="black", depthshade=True, alpha=0.9, zorder = zzz-1)
+        ax.text(x, y, z, str(node), color='black', size=16, ha='center', va='center', zorder=zzz)
 
 
-    ax.view_init(elev=20, azim=-60)  # You can adjust these angles
+    # ax.view_init(elev=20, azim=-60)  # You can adjust these angles
     # If the graph still appears small, try adjusting the axis limits or the viewpoint
     ax.set_xlim([min(x[0] for x in pos_3d.values()), max(x[0] for x in pos_3d.values())])
     ax.set_ylim([min(x[1] for x in pos_3d.values()), max(x[1] for x in pos_3d.values())])
     ax.set_zlim([min(x[2] for x in pos_3d.values()), max(x[2] for x in pos_3d.values())])
+    ax.view_init(elev=20, azim=-60)
 
-    # Set equal aspect ratio
     ax.set_box_aspect([1,1,1])  # Equal aspect ratio
 
     # Remove gridlines and axis ticks, and set labels
@@ -523,19 +640,22 @@ def plot_3d(G):
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
     # Adjust the viewpoint to enhance depth perception
-    ax.view_init(elev=30, azim=120)
+    # ax.view_init(elev=30, azim=120)
 
     # Plot gridlines
     ax.xaxis._axinfo['grid'].update(color = 'dimgray', linestyle = '--', linewidth = 0.5)
     ax.yaxis._axinfo['grid'].update(color = 'dimgray', linestyle = '--', linewidth = 0.5)
     ax.zaxis._axinfo['grid'].update(color = 'dimgray', linestyle = '--', linewidth = 0.5)
 
-    plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+    # plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+    # plt.draw()
 
     # Display the plot
     plt.show()
-# for i in range(2, 15):
+# ii = [15, 20, 25, 40, 50, 60, 100, 120]
+# for i in ii:
 #     G = create_random_graph(i, 10, 1, 'complete')
-#     visualize_graph(G, 1, 1, 0, 1)
+#     # visualize_graph(G, 1, 1, 0, 1, nx.circular_layout(G), anot = False)
 #     plot_3d(G)
+#     plt.close('all')
 # print('yes')
