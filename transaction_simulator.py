@@ -395,193 +395,65 @@ def visualize_graph(G, transaction_number, succesfull_transactions, fee, capacit
     plt.tight_layout()
     plt.show()
     plt.close()
-# # #
-num_nodes = [6]
-capacity_range = 1
-transaction_amount = 1
-# fees = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,  1.0]
-fees = [0.0]
-# fee_range = np.round(np.arange(0.0, 1.1, 0.1), 2)
-epsilon = 0.002
-num_runs = 1
-avg_degree = 10
-window_size = 1000
-# num_nodes = [2, 3, 4, 5, 6, 7, 8, 9, 10]
-# # num_nodes = [2, ]
-# capacity_range = [2, 3, 4, 5, 8, 10, 15, 20, 30]
+# # # #
+# num_nodes = [6]
+# capacity_range = 1
 # transaction_amount = 1
-# fee_range = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-results = {
-    'fee': [],
-    'success_rate': [],
-    'run': [],
-    'avg_path_length': [],
-    'node': []
-}
-
-
-result = pd.read_pickle('line_graph_fee_0_vs_nodes_smaller.pkl')
-
-for node in num_nodes:
-    print(f'started node {node}')
-    for fee in fees:
-        for run in range(num_runs):
-            G = create_random_graph(node, avg_degree, capacity_range, 'complete')
-            pos = nx.spring_layout(G)
-            # pos = nx.circular_layout(G)
-            # pos = nx.circular_layout(G)
-            success_rate, avg_path_length = simulate_transactions_fees(G, capacity_range , node, epsilon, fee, transaction_amount,
-                                                                   window_size, pos, visualize=True, visualize_initial = 3)
-            results['fee'].append(fee)
-            results['success_rate'].append(success_rate)
-            results['run'].append(run)
-            results['avg_path_length'].append(avg_path_length)
-            results['node'].append(node)
-
-result=pd.DataFrame(results)
-sns.set_theme()  # Apply the default theme
-plt.figure(figsize=(10, 6))
-plt.ylim([0.0, 1.1])
-sns.lineplot(x='node', y='success_rate', data=result, marker ='o')  # Creates a scatter plot
-plt.show()
-
-plt.figure(figsize=(10, 6))
+# # fees = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,  1.0]
+# fees = [0.0]
+# # fee_range = np.round(np.arange(0.0, 1.1, 0.1), 2)
+# epsilon = 0.002
+# num_runs = 1
+# avg_degree = 10
+# window_size = 1000
+# # num_nodes = [2, 3, 4, 5, 6, 7, 8, 9, 10]
+# # # num_nodes = [2, ]
+# # capacity_range = [2, 3, 4, 5, 8, 10, 15, 20, 30]
+# # transaction_amount = 1
+# # fee_range = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+# results = {
+#     'fee': [],
+#     'success_rate': [],
+#     'run': [],
+#     'avg_path_length': [],
+#     'node': []
+# }
+#
+#
+# result = pd.read_pickle('line_graph_fee_0_vs_nodes_smaller.pkl')
+#
+# for node in num_nodes:
+#     print(f'started node {node}')
+#     for fee in fees:
+#         for run in range(num_runs):
+#             G = create_random_graph(node, avg_degree, capacity_range, 'complete')
+#             pos = nx.spring_layout(G)
+#             # pos = nx.circular_layout(G)
+#             # pos = nx.circular_layout(G)
+#             success_rate, avg_path_length = simulate_transactions_fees(G, capacity_range , node, epsilon, fee, transaction_amount,
+#                                                                    window_size, pos, visualize=True, visualize_initial = 3)
+#             results['fee'].append(fee)
+#             results['success_rate'].append(success_rate)
+#             results['run'].append(run)
+#             results['avg_path_length'].append(avg_path_length)
+#             results['node'].append(node)
+#
+# result=pd.DataFrame(results)
+# sns.set_theme()  # Apply the default theme
+# plt.figure(figsize=(10, 6))
 # plt.ylim([0.0, 1.1])
-sns.lineplot(x='node', y='avg_path_length', data=result, marker ='o')  # Creates a scatter plot
-plt.show()
-result.to_pickle('complete_graph_fee_0_vs_nodes.pkl')
-mean_df = result.groupby('node')['avg_path_length'].agg(['mean', 'std']).reset_index()
+# sns.lineplot(x='node', y='success_rate', data=result, marker ='o')  # Creates a scatter plot
+# plt.show()
+#
+# plt.figure(figsize=(10, 6))
+# # plt.ylim([0.0, 1.1])
+# sns.lineplot(x='node', y='avg_path_length', data=result, marker ='o')  # Creates a scatter plot
+# plt.show()
+# result.to_pickle('complete_graph_fee_0_vs_nodes.pkl')
+# mean_df = result.groupby('node')['avg_path_length'].agg(['mean', 'std']).reset_index()
+
 # The graph to visualize
 
-# 3d spring layout
-pos = nx.spring_layout(G, dim=3, seed=779)
-# Extract node and edge positions from the layout
-node_xyz = np.array([pos[v] for v in sorted(G)])
-edge_xyz = np.array([(pos[u], pos[v]) for u, v in G.edges()])
-
-# Create the 3D figure
-fig = plt.figure()
-ax = fig.add_subplot(111, projection="3d")
-
-# Plot the nodes - alpha is scaled by "depth" automatically
-ax.scatter(*node_xyz.T, s=100, ec="w")
-
-# Plot the edges
-for vizedge in edge_xyz:
-    ax.plot(*vizedge.T, color="tab:gray")
-
-
-def _format_axes(ax):
-    """Visualization options for the 3D axes."""
-    # Turn gridlines off
-    ax.grid(False)
-    # Suppress tick labels
-    for dim in (ax.xaxis, ax.yaxis, ax.zaxis):
-        dim.set_ticks([])
-    # Set axes labels
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    ax.set_zlabel("z")
-
-
-_format_axes(ax)
-fig.tight_layout()
-plt.show()
-print(f'success rate is {success_rate}')
-print(f'Average path is {avg_path_length}')
-
-# 3d spring layout
-pos = nx.spring_layout(G, dim=3, seed=779)
-# Extract node and edge positions from the layout
-node_xyz = np.array([pos[v] for v in sorted(G)])
-curved_edges_xyz = np.array([(pos[u], pos[v]) for u, v in G.edges() if reversed((u, v)) in G.edges()])
-straight_edges_xyz = np.array([(pos[u], pos[v]) for u, v in G.edges() if reversed((u, v)) not in G.edges()])
-
-
-# nx.draw_networkx_edges(G, pos, ax=ax, edgelist=straight_edges)
-# arc_rad = 0.25
-# nx.draw_networkx_edges(G, pos, ax=ax, edgelist=curved_edges, connectionstyle=f'arc3, rad = {arc_rad}')
-#
-# edge_weights = nx.get_edge_attributes(G, 'capacity')
-# curved_edge_labels = {edge: edge_weights[edge] for edge in curved_edges}
-# straight_edge_labels = {edge: edge_weights[edge] for edge in straight_edges}
-# my_draw_networkx_edge_labels(G, pos, ax=ax, edge_labels=curved_edge_labels, rotate=False, rad=arc_rad)
-# nx.draw_networkx_edge_labels(G, pos, ax=ax, edge_labels=straight_edge_labels, rotate=False)
-
-# Create the 3D figure
-fig = plt.figure()
-ax = fig.add_subplot(111, projection="3d")
-
-# Plot the nodes - alpha is scaled by "depth" automatically
-ax.scatter(*node_xyz.T, s=100, ec="w")
-
-# Plot the edges
-for vizedge in straight_edges_xyz:
-    ax.plot(*vizedge.T, color="blue")
-
-
-def _format_axes(ax):
-    """Visualization options for the 3D axes."""
-    # Turn gridlines off
-    ax.grid(False)
-    # Suppress tick labels
-    for dim in (ax.xaxis, ax.yaxis, ax.zaxis):
-        dim.set_ticks([])
-    # Set axes labels
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    ax.set_zlabel("z")
-
-
-_format_axes(ax)
-fig.tight_layout()
-plt.show()
-#--------------------
-G = create_random_graph(8, 10, 1, 'complete')
-visualize_graph(G, 1,1,0,1)
-# Extract node and edge positions from the layout
-pos = nx.spring_layout(G, dim=3, seed=779)
-
-# Get 2D position
-pos_2d = nx.spring_layout(G)
-
-# Convert 2D positions to 3D by adding a z-coordinate of 0
-pos_3d = {node: (pos[0], pos[1], 0) for node, pos in pos_2d.items()}
-node_xyz = np.array([pos[v] for v in sorted(G)])
-edge_xyz = np.array([(pos[u], pos[v]) for u, v in G.edges()])
-
-# Create the 3D figure
-fig = plt.figure()
-ax = fig.add_subplot(111, projection="3d")
-
-# Plot the nodes - alpha is scaled by "depth" automatically
-ax.scatter(*node_xyz.T, s=300, ec="w")
-
-# Plot the edges
-for vizedge in edge_xyz:
-    ax.plot(*vizedge.T, color="tab:gray")
-for (u, v), label in nx.get_edge_attributes(G, 'capacity').items():
-    x_mid = (pos[u][0] + pos[v][0]) / 2
-    y_mid = (pos[u][1] + pos[v][1]) / 2
-    z_mid = (pos[u][2] + pos[v][2]) / 2
-    ax.text(x_mid, y_mid, z_mid, str(label), color='black', size='16')
-
-def _format_axes(ax):
-    """Visualization options for the 3D axes."""
-    # Turn gridlines off
-    ax.grid(False)
-    # Suppress tick labels
-    for dim in (ax.xaxis, ax.yaxis, ax.zaxis):
-        dim.set_ticks([])
-    # Set axes labels
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    ax.set_zlabel("z")
-
-
-_format_axes(ax)
-fig.tight_layout()
-plt.show()
 
 
 #-----
@@ -662,8 +534,8 @@ def plot_3d(G):
 
     # Display the plot
     plt.show()
-for i in range(2, 15):
-    G = create_random_graph(i, 10, 1, 'complete')
-    visualize_graph(G, 1, 1, 0, 1)
-    plot_3d(G)
-print('yes')
+# for i in range(2, 15):
+#     G = create_random_graph(i, 10, 1, 'complete')
+#     visualize_graph(G, 1, 1, 0, 1)
+#     plot_3d(G)
+# print('yes')

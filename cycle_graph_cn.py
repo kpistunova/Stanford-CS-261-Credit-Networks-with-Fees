@@ -211,9 +211,9 @@ df = pd.read_pickle('cycle_len_vs_fee_0_cn_after_fix.pkl')
 # for capacity in df_filtered['capacity'].unique():
 #     plot_results_network_size_variation(df_filtered, capacity)
 # Simulation
-df = simulate_network_network_size_variation(cn, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing=False, checkpoint_interval=num_runs)
-df.to_pickle('cycle_len_vs_fee_0_cn_after_fix.pkl')
-
+# df = simulate_network_network_size_variation(cn, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing=False, checkpoint_interval=num_runs)
+# df.to_pickle('cycle_len_vs_fee_0_cn_after_fix.pkl')
+#
 
 
 # # Plotting
