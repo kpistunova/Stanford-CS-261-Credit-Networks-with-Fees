@@ -281,6 +281,70 @@ def plot_results_capacity_fee_variation(df, filename_suffix=""):
     plt.savefig(f'heatmap_capacity_vs_fees_{filename_suffix}.png', dpi=300, bbox_inches='tight')
     plt.show()
 
+def plot_results_capacity_fee_variation_random_transactions_percentage_fees(df, filename_suffix=""):
+    """
+    Plots the results of the network simulation, showing the relationship between edge capacity, fees, and
+    transaction success rate.
+
+    Parameters:
+    df (pandas.DataFrame): A DataFrame containing the simulation results with columns for capacities,
+                           success rates, and percentage fees.
+
+    Note:
+    - The function generates two plots: a line plot showing success rates against capacities for different fees,
+      and a heatmap showing the success rate for each combination of fee and capacity.
+    - The plots are saved as image files.
+    """
+    cmap = sns.cubehelix_palette(as_cmap=True)
+    sns.set_theme()
+    fig = plt.figure(figsize=(8 / 1.2, 6 / 1.2), dpi=300)
+    sns.lineplot(data=df, x='capacity', y='success_rate', hue='percentage_fee', marker='o', ci='sd', legend='full')
+
+    plt.xlabel('Edge Capacity', fontsize=14)
+    plt.ylabel('Success Rate', fontsize=14)
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
+    plt.ylim([0, 1.1])
+    plt.xlim(left = 0)
+
+    plt.tight_layout()
+    fig.savefig(f'capacity_vs_percentage_fees_{filename_suffix}.png', dpi=300, bbox_inches='tight')
+    plt.show()
+
+    fig, ax = plt.subplots(figsize=(8 / 1.2, 6 / 1.2), dpi=300)
+    # Use transparency to alleviate overplotting
+    sns.lineplot(data=df, x='avg_path_length', y='success_rate', hue='capacity', style='percentage_fee',
+                 palette='coolwarm', markers=True, dashes=False, alpha=0.7, ax=ax)
+    # Improve the legibility of the plot
+    plt.xlabel('Average path length', fontsize=16)
+    plt.ylabel('Success Rate', fontsize=16)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    ax.xaxis.labelpad = 15
+    ax.yaxis.labelpad = 15
+    # Adjust legend
+    handles, labels = ax.get_legend_handles_labels()
+    legend = ax.legend(title='Legend', loc='best', fontsize='x-small', title_fontsize='small')
+    # Set the limits appropriately
+    plt.ylim([0.3, 1.1])
+    plt.xlim([1.5, 3])
+    # Save the figure with tight layout
+    plt.tight_layout()
+    fig.savefig(f'improved_plot_smol_capacity_vs_percentage_fees_{filename_suffix}.png', dpi=300)
+    # Display the plot
+    plt.show()
+
+    # Heatmap
+    pivot_table = df.pivot_table(values='success_rate', index='percentage_fee', columns='capacity', aggfunc='mean')
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(pivot_table, annot=True, fmt=".2f", cmap=cmap, vmin=0, cbar_kws={'label': 'Success Rate'}, square=True)
+
+    plt.title('Success Rate by Percentage Fee and Capacity')
+    plt.xlabel('Edge Capacity')
+    plt.ylabel('Percentage Fee')
+    plt.savefig(f'heatmap_capacity_vs_percentage_fees_{filename_suffix}.png', dpi=300, bbox_inches='tight')
+    plt.show()
+
 def identify_outliers(df, column,  multiplier=0.8 ):
     """
     Identifies outliers in a specified column of a DataFrame based on the Interquartile Range (IQR) method.
@@ -371,7 +435,7 @@ def russell_run_random_transactions_baseline_percentage_fees():
     # Simulation
     df = simulate_network_capacity_fee_variation_random_transaction_amounts_percentage_fees(num_nodes, capacity_range, transaction_interval, fee_percentage_range, epsilon, window_size, num_runs, avg_degree, checkpointing=True)
     df.to_pickle(f'{name}.pkl')
-    plot_results_capacity_fee_variation(df, name + generate_filename_timestamp_suffix())
+    plot_results_capacity_fee_variation_random_transactions_percentage_fees(df, name + generate_filename_timestamp_suffix()) # use this one for now even though the function name is for random_transactions_percentage_fees
 
 def russell_run_random_transactions_1_2_percentage_fees():
     """ Run an experiment where each transaction amount is a random value between [1, 2), and the fee is a percentage charged at each edge
@@ -393,7 +457,7 @@ def russell_run_random_transactions_1_2_percentage_fees():
     # Simulation
     df = simulate_network_capacity_fee_variation_random_transaction_amounts_percentage_fees(num_nodes, capacity_range, transaction_interval, fee_percentage_range, epsilon, window_size, num_runs, avg_degree, checkpointing=True)
     df.to_pickle(f'{name}.pkl')
-    plot_results_capacity_fee_variation(df, name + generate_filename_timestamp_suffix())
+    plot_results_capacity_fee_variation_random_transactions_percentage_fees(df, name + generate_filename_timestamp_suffix())
 
 def kate_run_typical_edge_capacity_variation_experiment():
     """ I've just moved the other "main" code over --Russell
