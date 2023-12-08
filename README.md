@@ -69,6 +69,18 @@ To install dependencies, run the following command in your terminal:
 pip install -r requirements.txt
 ```
 
+Alternatively, if you prefer Poetry:
+```sh
+poetry install
+```
+Just keep in mind that `requirements.txt` is the ground source of truth, and our `pyproject.toml` may run out of date.
+
+
+## Google Cloud
+
+https://askubuntu.com/a/1261782
+
+
 
 [//]: # ()
 [//]: # ()
