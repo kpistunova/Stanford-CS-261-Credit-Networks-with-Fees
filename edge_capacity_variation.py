@@ -405,7 +405,7 @@ def russell_run_random_transactions_1_2():
     name = 'russell_run_random_transactions_1_2'
     print(f"Running experiment {name}")
 
-    # Config for the baseline of the varying transaction amount experiment
+    # Config
     num_nodes = 100
     capacity_range = np.arange(1.0, 16, 1)
     capacity_range = np.append(capacity_range, 20)
@@ -427,7 +427,7 @@ def russell_run_random_transactions_baseline_percentage_fees():
     name = 'russell_run_random_transactions_baseline_percentage_fees'
     print(f"Running experiment {name}")
 
-    # Config for the baseline of the varying transaction amount experiment
+    # Config
     num_nodes = 100
     capacity_range = np.arange(1.0, 16, 1)
     capacity_range = np.append(capacity_range, 20)
@@ -449,7 +449,7 @@ def russell_run_random_transactions_1_2_percentage_fees():
     name = 'russell_run_random_transactions_1_2_percentage_fees'
     print(f"Running experiment {name}")
 
-    # Config for the baseline of the varying transaction amount experiment
+    # Config
     num_nodes = 100
     capacity_range = np.arange(1.0, 16, 1)
     capacity_range = np.append(capacity_range, 20)
@@ -566,8 +566,8 @@ def kate_run_typical_edge_capacity_variation_experiment():
 
 if __name__ == '__main__':
     print("Hello world!", flush=True)
-    #russell_run_random_transactions_baseline()
-    #russell_run_random_transactions_1_2()
+    russell_run_random_transactions_baseline()
+    russell_run_random_transactions_1_2()
     russell_run_random_transactions_baseline_percentage_fees()
     russell_run_random_transactions_1_2_percentage_fees()
     print('------------------', flush=True)
