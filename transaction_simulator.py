@@ -29,6 +29,40 @@ def create_random_graph(num_nodes, avg_degree, fixed_total_capacity, type = 'ran
             # Add the edge only if the reverse edge does not exist
             if not G.has_edge(v, u):
                 G.add_edge(u, v, capacity=fixed_total_capacity)
+    elif type == 'er':
+        # Calculate the probability p for the Erdos-Renyi graph
+        p = avg_degree / (num_nodes - 1)
+
+        # Create an Erdős-Rényi graph
+        G = nx.erdos_renyi_graph(num_nodes, p, directed=False)
+
+        # Convert to a directed graph and set capacities
+        G = G.to_directed()
+        for (u, v) in list(G.edges()):
+            if random.choice([True, False]):
+                # Reverse the direction of the edge
+                G.remove_edge(u, v)
+                G.add_edge(v, u, capacity=fixed_total_capacity)
+            else:
+                # Keep the edge direction and add capacity
+                G[u][v]['capacity'] = fixed_total_capacity
+    elif type == 'ba':
+        # Calculate the number of edges each new node forms for the Barabasi-Albert graph
+        d = avg_degree // 2
+
+        # Create a Barabási-Albert graph
+        G = nx.barabasi_albert_graph(num_nodes, d)
+
+        # Convert to a directed graph and set capacities
+        G = G.to_directed()
+        for (u, v) in list(G.edges()):
+            if random.choice([True, False]):
+                # Reverse the direction of the edge
+                G.remove_edge(u, v)
+                G.add_edge(v, u, capacity=fixed_total_capacity)
+            else:
+                # Keep the edge direction and add capacity
+                G[u][v]['capacity'] = fixed_total_capacity
     elif type == 'line':
         # Add edges to the graph to form a line
         for i in range(num_nodes - 1):
