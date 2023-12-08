@@ -213,7 +213,13 @@ def print_estimated_remaining_time(total_execution_time, fee_range, fee):
     print(f"Estimated remaining time: {estimated_remaining_time/60} minutes\n")
 
 def generate_filename_timestamp_suffix():
-    return f"_{uuid.uuid4()}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    # Generate a UUID and truncate it to the segment before the first dash
+    truncated_uuid = str(uuid.uuid4()).split('-')[0]
+
+    # Format the date with dashes between year, month, and day
+    formatted_date = datetime.now().strftime('%Y-%m-%d-%H%M%S')
+
+    return f"_{truncated_uuid}_{formatted_date}"
 
 def plot_results_capacity_fee_variation(df, filename_suffix=""):
     """
@@ -560,8 +566,8 @@ def kate_run_typical_edge_capacity_variation_experiment():
 
 if __name__ == '__main__':
     print("Hello world!", flush=True)
-    russell_run_random_transactions_baseline()
-    russell_run_random_transactions_1_2()
+    #russell_run_random_transactions_baseline()
+    #russell_run_random_transactions_1_2()
     russell_run_random_transactions_baseline_percentage_fees()
     russell_run_random_transactions_1_2_percentage_fees()
     print('------------------', flush=True)
