@@ -9,7 +9,7 @@ import pandas as pd
 from transaction_simulator import simulate_transactions_fees, create_random_graph
 import time
 
-def simulate_network_network_size_variation(num_nodes, capacity_range, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing = False, checkpoint_interval = 20):
+def simulate_network_network_size_variation(cn, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing = False, checkpoint_interval = 20):
     """
     Simulates a credit network with varying capacities and transaction fees, computes the success rate of transactions,
     and optionally saves checkpoints of the simulation results.
@@ -46,34 +46,35 @@ def simulate_network_network_size_variation(num_nodes, capacity_range, transacti
     total_execution_time = 0
     for fee in fee_range:
         start_time = time.time()
-        for capacity in capacity_range:
-            for node in num_nodes:
-                for run in range(num_runs):
-                    # if run == 1:
-                    #     visualize = True
-                    # else:
-                    #     visualize = False
-                    G = create_random_graph(node, avg_degree, capacity, 'cycle')
-                    pos = nx.spring_layout(G)
-                    success_rate, avg_path_length = simulate_transactions_fees(G, capacity, node, epsilon, fee,
-                                                                               transaction_amount, window_size, pos, visualize=False
-                                                                               )
-                    # print(f'Completed run {run}/{num_runs}, degree {degree}, fee {fee}')
+        for l in cn:
+            capacity = l[0]
+            node = l[1]
+            for run in range(num_runs):
+            # if run == 1:
+            #     visualize = True
+            # else:
+            #     visualize = False
+                G = create_random_graph(node, avg_degree, capacity, 'cycle')
+                pos = nx.spring_layout(G)
+                success_rate, avg_path_length = simulate_transactions_fees(G, capacity, node, epsilon, fee,
+                                                                           transaction_amount, window_size, pos, visualize=False
+                                                                           )
+                # print(f'Completed run {run}/{num_runs}, degree {degree}, fee {fee}')
 
-                    results['nodes'].append(node)
-                    results['run'].append(run)
-                    results['success_rate'].append(success_rate)
-                    results['fee'].append(fee)
-                    results['capacity'].append(capacity)
-                    results['avg_path_length'].append(avg_path_length)
-                    if run % checkpoint_interval == 0:
-                        print(f'Completed run {run}/{num_runs}, node {node}, capacity {capacity}, fee {fee}')
+                results['nodes'].append(node)
+                results['run'].append(run)
+                results['success_rate'].append(success_rate)
+                results['fee'].append(fee)
+                results['capacity'].append(capacity)
+                results['avg_path_length'].append(avg_path_length)
+                if run % checkpoint_interval == 0:
+                    print(f'Completed run {run}/{num_runs}, node {node}, capacity {capacity}, fee {fee}')
 
-                    if checkpointing == True and run % checkpoint_interval == 0:
-                        checkpoint_df = pd.DataFrame(results)
-                        checkpoint_filename = f'checkpoint_capacity_fixed_{capacity}_fee_{fee}_run_{run}_node_{node}.pkl'
-                        checkpoint_df.to_pickle(checkpoint_filename)
-                        # print(f'Saved checkpoint to {checkpoint_filename}')
+                if checkpointing == True and run % checkpoint_interval == 0:
+                    checkpoint_df = pd.DataFrame(results)
+                    checkpoint_filename = f'checkpoint_capacity_fixed_{capacity}_fee_{fee}_run_{run}_node_{node}.pkl'
+                    checkpoint_df.to_pickle(checkpoint_filename)
+                    # print(f'Saved checkpoint to {checkpoint_filename}')
         end_time = time.time()
         execution_time = end_time - start_time
         total_execution_time += execution_time
@@ -121,7 +122,7 @@ def plot_results_network_size_variation(df, capacity):
     plt.xlim(left=-0.01)
 
     plt.tight_layout()
-    fig.savefig(f'cycle_success_vs_fee_capacity_{capacity}.png', dpi=300, bbox_inches='tight')
+    fig.savefig(f'cycle_success_vs_fee_0_capacity_{capacity}.png', dpi=300, bbox_inches='tight')
     plt.show()
 
     fig, ax = plt.subplots(figsize=(8 / 1.2, 6 / 1.2), dpi=300)
@@ -149,7 +150,7 @@ def plot_results_network_size_variation(df, capacity):
     plt.xlim(left=0.95)
     # Save the figure with tight layout
     plt.tight_layout()
-    fig.savefig(f'cycle_len_vs_fee_capacity_{capacity}.png', dpi=300, bbox_inches='tight')
+    fig.savefig(f'cycle_len_vs_fee_0_capacity_{capacity}.png', dpi=300, bbox_inches='tight')
     # Display the plot
     plt.show()
     # Heatmap
@@ -191,36 +192,35 @@ def find_closest_ratios(scale, c_min=1, c_max=20, n_min=3, n_max=200):
 
 # Configuration
 scale = np.linspace(0.017, 1, 113)
-# cn = find_closest_ratios(scale)
+cn = find_closest_ratios(scale)
 # capacity_range = sorted(set([result[0] for result in cn]))
 # num_nodes = sorted(set([result[1] for result in cn]))
-num_nodes = [3, 5, 10, 40, 100, 200, 400, 500, 1000]
+# num_nodes = [3, 4, 5, 7, 10, 20, 40, 70, 100, 500, 1000]
 # num_nodes = [2, ]
-capacity_range = [1, 5, 10, 40, 100, 500]
+# capacity_range = [1, 2, 4, 8, 10, 15, 30, 50, 100, 1000, 5000]
 transaction_amount = 1
-fee_range = [0.0, 0.3, 0.6, 1.0]
+fee_range = [0.0]
 epsilon = 0.002
-num_runs = 20
+num_runs = 3
 avg_degree = 10
 window_size = 1000
 
-# df = pd.read_pickle('cycle_len_vs_fee_0_capacity_after_fix.pkl')
+df = pd.read_pickle('cycle_len_vs_fee_0_cn_after_fix.pkl')
 # df_filtered = df[df['fee'] != 0.0]
 
 # for capacity in df_filtered['capacity'].unique():
 #     plot_results_network_size_variation(df_filtered, capacity)
 # Simulation
-df = simulate_network_network_size_variation(num_nodes, capacity_range, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing=False, checkpoint_interval=num_runs)
-df.to_pickle('cycle_len_vs_fee_all_capacity_after_fix_correct.pkl')
+# df = simulate_network_network_size_variation(cn, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing=False, checkpoint_interval=num_runs)
+# df.to_pickle('cycle_len_vs_fee_0_cn_after_fix.pkl')
+#
 
-
-cn = find_closest_ratios(scale)
 
 # # Plotting
 # for capacity in df['capacity'].unique():
 #     plot_results_network_size_variation(df, capacity)
-#
-#
+
+
 
 df['scale'] = df['capacity'] / (df['nodes'])
 
@@ -240,28 +240,4 @@ plt.xlim([-0.01, 1.1])
 
 plt.tight_layout()
 # fig.savefig(f'success_line_graph_vs_c_div_by_n_squared.png', dpi=300, bbox_inches='tight')
-plt.show()
-selected_fees=[0.1]
-df_filtered = df[df['fee'].isin(selected_fees)]
-fig, ax = plt.subplots(figsize=(8 / 1.2, 6 / 1.2), dpi=300)
-
-# Define line styles for the fees
-
-for fee in df_filtered['fee'].unique():
-    subset = df_filtered[df_filtered['fee'] == fee]
-    alpha_value = 0.8
-    ci = 'sd'
-    sns.lineplot(data=subset, x='nodes', y='success_rate', hue='capacity',
-                 palette='coolwarm', hue_norm=matplotlib.colors.LogNorm(),
-                 linestyle='solid', marker='o', linewidth=2,
-                 alpha=alpha_value, ci=ci, ax=ax, markersize=6, legend='auto')
-
-
-plt.xlabel('Node Number', fontsize=16)
-plt.ylabel('Success Rate', fontsize=16)
-plt.xticks(fontsize=14)
-plt.yticks(fontsize=14)
-
-plt.tight_layout()
-fig.savefig(f'success_rate_vs_node_number_after_fix_cycle.png', dpi=300)
 plt.show()
