@@ -175,8 +175,8 @@ num_runs = 20
 avg_degree = 10
 window_size = 1000
 
-df = pd.read_pickle('line_len_vs_fee_different_capacity.pkl')
-df_filtered = df[df['fee'] != 0.0]
+# df = pd.read_pickle('line_len_vs_fee_different_capacity.pkl')
+# df_filtered = df[df['fee'] != 0.0]
 
 for capacity in df['capacity'].unique():
     plot_results_network_size_variation(df, capacity)

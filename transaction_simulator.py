@@ -182,6 +182,7 @@ def simulate_transactions_fees(G, capacity, num_nodes, epsilon, fee, transaction
     successful_transactions = 0
     prev_success_rate = -1
     total_length_of_paths = 0
+    state_frequencies = {}
     if G_reference is None:
         G_reference = G.copy()
     if visualize:
@@ -197,13 +198,15 @@ def simulate_transactions_fees(G, capacity, num_nodes, epsilon, fee, transaction
                     if transaction_succeeded:
                         successful_transactions += 1
                         total_length_of_paths += len(path) - 1
+                        current_state = tuple(sorted((u, v, round(G[u][v]['capacity'], 2)) for u, v in G.edges()))
+                        state_frequencies[current_state] = state_frequencies.get(current_state, 0) + 1
                         # Subtract 1 to get the number of edges
                     else:
-                        if visualize and (total_transactions - successful_transactions) <= visualize_initial:
+                        if visualize and (total_transactions - successful_transactions) <= visualize_initial and show == False:
                             visualize_graph(G, total_transactions, successful_transactions, fee, capacity, pos, show=show, save=save, s=s, t=t, fail = True, G_reference = G_reference, type = type)
 
             except nx.NetworkXNoPath:
-                if visualize and (total_transactions - successful_transactions) <= visualize_initial:
+                if visualize and (total_transactions - successful_transactions) <= visualize_initial and show == False:
                     visualize_graph(G, total_transactions, successful_transactions, fee, capacity, pos, show=show, save=save,  s=s, t=t,
                                     no_path=True, G_reference = G_reference, type = type)
                 pass
@@ -217,6 +220,11 @@ def simulate_transactions_fees(G, capacity, num_nodes, epsilon, fee, transaction
             break
         prev_success_rate = current_success_rate
     avg_path_length = total_length_of_paths / successful_transactions if successful_transactions > 0 else 0
+    # Normalize frequencies to get probabilities
+    total = sum(state_frequencies.values())
+    stationary_distribution = {state: freq / total for state, freq in state_frequencies.items()}
+    top_states = sorted(stationary_distribution, key=stationary_distribution.get, reverse=True)
+
     if visualize:
-        visualize_graph(G, total_transactions, successful_transactions, fee, capacity, pos, show=show, save=save, G_reference = G_reference, type = type)
-    return current_success_rate, avg_path_length
+        visualize_graph(G, total_transactions, successful_transactions, fee, capacity, pos, show=show, save=save, G_reference = G_reference, type = type, state_probabilities = stationary_distribution, selected_states=top_states)
+    return current_success_rate, avg_path_length, stationary_distribution

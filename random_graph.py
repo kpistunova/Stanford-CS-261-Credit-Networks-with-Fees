@@ -69,7 +69,7 @@ def simulate_network_network_size_variation(num_nodes, capacity_range, transacti
 
                     if checkpointing == True and run % checkpoint_interval == 0:
                         checkpoint_df = pd.DataFrame(results)
-                        checkpoint_filename = f'checkpoint_capacity_fixed_{capacity}_fee_{fee}_run_{run}_node_{node}.pkl'
+                        checkpoint_filename = f'checkpoint_random_graph_{capacity}_fee_{fee}_run_{run}_node_{node}.pkl'
                         checkpoint_df.to_pickle(checkpoint_filename)
                         # print(f'Saved checkpoint to {checkpoint_filename}')
         end_time = time.time()
@@ -167,7 +167,7 @@ def plot_results_network_size_variation(df, capacity):
 
 # Configuration
 num_nodes = [21, 30, 40, 50, 80, 100, 200, 400, 500]
-capacity_range = [1,2, 3 , 4 ,5,6,7, 8, 9, 10,20, 30,  40, 50, 60, 70, 80, 90, 100, 200, 500]
+capacity_range = [1,2, 3 , 4 ,5,6,7, 8, 9, 10,30,   50,  70,  90, 100, 200, 500]
 transaction_amount = 1
 fee_range = [0.0, 0.2, 0.4, 0.6, 0.8,  1.0]
 epsilon = 0.002
@@ -181,7 +181,7 @@ window_size = 1000
 # for capacity in df_filtered['capacity'].unique():
 #     plot_results_network_size_variation(df_filtered, capacity)
 # Simulation
-df = simulate_network_network_size_variation(num_nodes, capacity_range, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing=False, checkpoint_interval=num_runs)
+df = simulate_network_network_size_variation(num_nodes, capacity_range, transaction_amount, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing=True, checkpoint_interval=num_runs)
 df.to_pickle('random_er_graph_node_vs_fee_all_capacity_after_fix_correct.pkl')
 
 sns.set_theme()

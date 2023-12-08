@@ -53,11 +53,7 @@ for run in range(num_runs):
                 G = create_random_graph(node, avg_degree, capacity, 'star')
                 # Create a reference copy of the graph
                 G_reference = G.copy()
-                pos = nx.spring_layout(G)
-                # pos = nx.circular_layout(G)
-                # pos = nx.circular_layout(G)
-                success_rate, avg_path_length = simulate_transactions_fees(G, capacity , node, epsilon, fee, transaction_amount,
-                                                                       window_size, pos, visualize=False, visualize_initial = -1, show = False, save = False, G_reference = G_reference, type = 'star' )
+
                 results['fee'].append(fee)
                 results['success_rate'].append(success_rate)
                 results['run'].append(run)
