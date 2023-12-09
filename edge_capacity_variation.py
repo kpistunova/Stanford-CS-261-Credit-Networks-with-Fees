@@ -78,7 +78,7 @@ def simulate_network_capacity_fee_variation(num_nodes, capacity_range, transacti
         print(f"Estimated remaining time: {estimated_remaining_time/60} minutes\n")
     return pd.DataFrame(results)
 
-def simulate_network_capacity_fee_variation_random_transaction_amounts(num_nodes, capacity_range, transaction_interval, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing = False, checkpoint_interval = 20):
+def simulate_network_capacity_fee_variation_random_transaction_amounts(num_nodes, capacity_range, transaction_interval, fee_range, epsilon, window_size, num_runs, avg_degree, checkpointing = False, checkpoint_interval = 20, distribution=None):
     """
     Simulates a credit network with varying capacities and random transaction fees, computes the success rate of transactions,
     and optionally saves checkpoints of the simulation results.
@@ -120,7 +120,7 @@ def simulate_network_capacity_fee_variation_random_transaction_amounts(num_nodes
                 pos = nx.spring_layout(G)
 
                 success_rate, avg_path_length = simulate_transactions_fees_random_transaction_amounts(G, capacity, num_nodes, epsilon, fee,
-                                                                           transaction_interval, window_size, pos)
+                                                                           transaction_interval, window_size, pos, distribution=distribution)
                 append_results(results, fee, capacity, run, success_rate, avg_path_length)
                 
                 if checkpointing == True and run % checkpoint_interval == 0:

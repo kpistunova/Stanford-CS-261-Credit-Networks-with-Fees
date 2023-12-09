@@ -1,3 +1,4 @@
+import math
 import networkx as nx
 import random
 from visualizing import visualize_graph
@@ -242,7 +243,7 @@ def simulate_transactions_fees(G, capacity, num_nodes, epsilon, fee, transaction
     return current_success_rate, avg_path_length
 
 def simulate_transactions_fees_random_transaction_amounts(G, capacity, num_nodes, epsilon, fee, transaction_interval, window_size, pos=None,
-                               visualize=False, visualize_initial=0, visualize_every_n=1000):
+                               visualize=False, visualize_initial=0, visualize_every_n=1000, distribution=None):
     """
     Simulates a series of transactions in a credit network, represented as a directed graph, and computes the
     success rate of these transactions. The success rate is the ratio of successful transactions to the total number
@@ -289,7 +290,21 @@ def simulate_transactions_fees_random_transaction_amounts(G, capacity, num_nodes
             # Select a source and sink at random
             s, t = random.sample(range(num_nodes), 2)
             # Select a random transaction amount between the transaction interval
-            transaction_amount = random.uniform(*transaction_interval)
+            if distribution is None:
+                transaction_amount = random.uniform(*transaction_interval)
+            elif distribution == 'normal':
+                mu = 1
+                sigma = 0.5
+                transaction_amount = random.gauss(mu, sigma)
+                transaction_amount = max(transaction_interval[0], min(transaction_amount, transaction_interval[1]))  # Truncate to range 0-2
+            elif distribution == 'lognormal':
+                mu = 0.5
+                sigma = -0.5       
+                transaction_amount = random.lognormvariate(mu, sigma)
+                transaction_amount = max(transaction_interval[0], min(transaction_amount, transaction_interval[1]))  # Truncate to range 0-2
+            else: 
+                print("ERROR: DISTRIBUTION NOT FOUND")
+
             try:
                 path = nx.shortest_path(G, s, t)
                 # Direct capacity check
