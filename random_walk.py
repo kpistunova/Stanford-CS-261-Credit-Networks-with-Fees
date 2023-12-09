@@ -101,16 +101,18 @@ if not os.path.exists(new_directory_path):
     # If it doesn't exist, create a new directory
     os.makedirs(new_directory_path)
 transaction_amount = 1
-fees = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,  1.0]
 # fees = [0.0]
 # fee_range = np.round(np.arange(0.0, 1.1, 0.1), 2)
 epsilon = 0.002
 num_runs = 1
 avg_degree = 10
 window_size = 10000
-num_nodes = [3,4,5]
-# # num_nodes = [2, ]
-capacity_range = [1,2,3,4,5]
+# Configuration
+num_nodes = [2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 100]
+# num_nodes = [2, ]
+capacity_range = [2, 3, 4, 5, 8, 10, 15, 20, 30, 40, 50, 100, 200, 10000]
+transaction_amount = 1
+fees = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 # capacity_range = [1, 2, 3]
 # capacity_range = np.concatenate((np.arange(1.0, 11.5, 0.5), [12, 15, 20, 50, 100]))
 
@@ -163,7 +165,7 @@ for run in range(num_runs):
                 #
                 # # Plot the network states
                 # plot_network_states(G, top_states, stationary_distribution)
-                # print(f'Completed run {run}/{num_runs}, capacity {capacity}, fee {fee}, node {node}')
+                print(f'Completed run {run}/{num_runs}, capacity {capacity}, fee {fee}, node {node}')
                 # Save the stationary distribution to a pickle file
                 pickle_filename = f'stationary_distribution_run_{run}_node_{node}_fee_{fee}_capacity_{capacity}.pkl'
                 pickle_filepath = os.path.join(new_directory_path, pickle_filename)
