@@ -184,7 +184,7 @@ def my_draw_networkx_edge_labels(
 
     return text_items
 
-def visualize_graph(G, transaction_number, succesfull_transactions, fee, capacity, pos=None,  s=None, t=None, fail = False, no_path = False, anot = True, save = False, show = False, G_reference = None, type = None):
+def visualize_graph(G, transaction_number, succesfull_transactions, fee, capacity, pos=None,  s=None, t=None, fail = False, no_path = False, anot = True, save = False, show = False, G_reference = None, type = None, selected_states = None, state_probabilities = None):
     if pos is None:
         pos = nx.spring_layout(G)
     M = G.number_of_edges()
@@ -300,6 +300,73 @@ def visualize_graph(G, transaction_number, succesfull_transactions, fee, capacit
     filename = title.replace(" ", "_").replace(",", "").replace("=","") + ".png"  # Replace spaces with underscores and remove commas and equals signs for filenam
     plt.axis('off')
     file_path = os.path.join(new_directory_path, filename)
+    plt.tight_layout()
+    if show:
+        plt.show()
+    if save:
+        fig.savefig((file_path), dpi=300)
+    plt.close(fig)
+    if selected_states is not None and state_probabilities is not None:
+        num_states = len(selected_states) if selected_states else 1
+
+        figsize = (num_states * 8/1.8, 6/1.8) if num_states <= 4 else (32, 6 * (num_states // 4))
+
+        fig, axes = plt.subplots(nrows=1 if num_states <= 4 else num_states // 4, ncols=min(num_states, 4),
+                                 figsize=figsize, dpi=300)
+        if len(selected_states) == 1:  # Adjust if there's only one state to plot
+            axes = [axes]
+
+        for ax, state in zip(axes.flatten(), selected_states):
+            H = nx.DiGraph()
+
+            for (u, v, capacity) in state:
+                H.add_edge(u, v, capacity=capacity)
+            nx.draw_networkx_labels(H, pos, ax=ax)
+
+            # Create a graph for the current state
+            nx.draw_networkx_nodes(H, pos, ax=ax, node_color='lightskyblue', edgecolors='black')
+            # Get edge colors
+
+            # Determine edge types
+            straight_edges = [edge for edge in H.edges() if not H.has_edge(edge[1], edge[0])]
+            curved_edges = [edge for edge in H.edges() if H.has_edge(edge[1], edge[0])]
+
+            # Draw straight edges
+            edge_colors = get_edge_colors(H, H, capacity)
+
+            nx.draw_networkx_edges(H, pos, ax=ax, edgelist=straight_edges,
+                                   edge_color=[edge_colors[e] for e in straight_edges])
+
+            # Draw edge labels (capacities)
+            # Draw curved edges
+            # nx.draw(G, pos, with_labels=True, node_size=700, node_color='skyblue')
+
+            arc_rad = 0.25
+            nx.draw_networkx_edges(H, pos, ax=ax, edgelist=curved_edges, connectionstyle=f'arc3, rad = {arc_rad}',
+                                   edge_color=[edge_colors[e] for e in curved_edges])
+            # Create a color map scalar mappable object for the color bar
+
+            # edge_labels = nx.get_edge_attributes(H, 'capacity')
+            # nx.draw_networkx_edge_labels(H, pos, edge_labels=edge_labels, ax=ax)
+            bbox_props = dict(boxstyle='round,pad=0.1', ec='white', fc='white', alpha=0.7)
+
+            edge_weights = nx.get_edge_attributes(H, 'capacity')
+            curved_edge_labels = {edge: edge_weights[edge] for edge in curved_edges}
+            straight_edge_labels = {edge: edge_weights[edge] for edge in straight_edges}
+            my_draw_networkx_edge_labels(H, pos, ax=ax, edge_labels=curved_edge_labels, rotate=False, rad=arc_rad,
+                                         font_size=ss, bbox=bbox_props)
+            nx.draw_networkx_edge_labels(H, pos, ax=ax, edge_labels=straight_edge_labels, rotate=False, font_size=ss,
+                                         bbox=bbox_props)
+
+            # Title with state info and probability
+            probability = state_probabilities[state]
+            state_label = ', '.join([f'({u},{v},{c})' for u, v, c in state])
+            ax.set_title(f"State: {state_label}\nProbability: {probability:.4f}")
+            ax.axis('off')
+    # ax.set_title(title, fontsize=14)
+    plt.axis('off')
+    new_f = 'MK' + filename +".png"
+    file_path = os.path.join(new_directory_path, new_f)
     plt.tight_layout()
     if show:
         plt.show()
