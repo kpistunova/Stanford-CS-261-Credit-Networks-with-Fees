@@ -1,4 +1,5 @@
 # Credit Network Simulation with Transaction Fees
+* Credit networks as demonstrated by the Three Stooges: https://www.youtube.com/watch?v=pENxsLVR_Xs
 
 ## Overview
 This repository contains Python simulations for studying the dynamics of credit networks with integrated transaction fees. The goal is to understand how various factors such as edge capacities, transaction fees, graph density, and topology influence the success rate of transactions within the network.
